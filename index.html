@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>정착 컨시어지 — 한국 정착, 저희가 다 해드립니다</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand: #6366f1; --brand-dark: #4f46e5; --brand-light: #eef2ff;
+      --green: #10b981; --green-light: #d1fae5;
+      --surface: #fff; --surface2: #f8fafc; --border: #e2e8f0;
+      --text: #0f172a; --text2: #64748b; --radius: 14px;
+      --shadow: 0 4px 32px rgba(99,102,241,.13);
+    }
+    body {
+      font-family: -apple-system, "Pretendard", "Noto Sans KR", sans-serif;
+      background: linear-gradient(135deg,#e0e7ff 0%,#fce7f3 50%,#ddd6fe 100%);
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+
+    /* ── MODAL ── */
+    #setup-modal {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(15,23,42,.6); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    #setup-modal.hidden { display: none; }
+    .modal-box {
+      background: var(--surface); border-radius: 20px; padding: 36px 32px;
+      max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.18);
+    }
+    .modal-box h2 { font-size: 1.35rem; font-weight: 700; margin-bottom: 8px; }
+    .modal-box p { font-size: .88rem; color: var(--text2); margin-bottom: 22px; line-height: 1.6; }
+    .modal-box input {
+      width: 100%; padding: 11px 15px; border: 1.5px solid var(--border);
+      border-radius: var(--radius); font-size: .93rem; outline: none;
+      font-family: monospace; transition: border .2s;
+    }
+    .modal-box input:focus { border-color: var(--brand); }
+    .modal-btn {
+      width: 100%; margin-top: 14px; padding: 13px; border: none;
+      border-radius: var(--radius); background: var(--brand); color: #fff;
+      font-size: 1rem; font-weight: 700; cursor: pointer; transition: background .2s;
+    }
+    .modal-btn:hover { background: var(--brand-dark); }
+    .modal-hint { font-size: .76rem; color: var(--text2); margin-top: 8px; text-align: center; }
+    .modal-hint a { color: var(--brand); text-decoration: none; }
+
+    /* ── APP ── */
+    #app {
+      width: 100%; max-width: 820px;
+      height: calc(100vh - 32px); max-height: 920px;
+      background: var(--surface); border-radius: 24px;
+      box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ── HEADER ── */
+    header {
+      padding: 0 22px; border-bottom: 1px solid var(--border);
+      background: var(--surface); flex-shrink: 0;
+    }
+    .header-top {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 13px 0;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 38px; height: 38px; border-radius: 11px;
+      background: linear-gradient(135deg,#6366f1,#a855f7);
+      display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+    }
+    .logo-text { font-size: 1rem; font-weight: 800; color: var(--text); }
+    .logo-sub  { font-size: .7rem; color: var(--text2); }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .lang-group { display: flex; border: 1.5px solid var(--border); border-radius: 9px; overflow: hidden; }
+    .lang-btn {
+      padding: 4px 8px; border: none; background: transparent;
+      font-size: .74rem; font-weight: 600; cursor: pointer; color: var(--text2); transition: all .15s;
+    }
+    .lang-btn.active { background: var(--brand); color: #fff; }
+    .key-btn {
+      padding: 5px 10px; border: 1.5px solid var(--border); border-radius: 9px;
+      background: transparent; font-size: .78rem; cursor: pointer; color: var(--text2);
+    }
+    .key-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+    /* ── SERVICE CHIPS ── */
+    .service-bar {
+      padding: 10px 0; overflow-x: auto; display: flex; gap: 7px; scrollbar-width: none;
+    }
+    .service-bar::-webkit-scrollbar { display: none; }
+    .svc-chip {
+      flex-shrink: 0; padding: 6px 13px;
+      border: 1.5px solid var(--border); border-radius: 999px;
+      background: var(--surface2); font-size: .77rem; font-weight: 600;
+      color: var(--text2); cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .svc-chip:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+
+    /* ── CHAT ── */
+    #messages {
+      flex: 1; overflow-y: auto; padding: 20px 18px;
+      display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth;
+    }
+    .msg { display: flex; gap: 9px; max-width: 78%; }
+    .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+    .msg.bot  { align-self: flex-start; }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1rem;
+    }
+    .msg.bot  .avatar { background: linear-gradient(135deg,#6366f1,#a855f7); color:#fff; font-size:.85rem; font-weight:700; }
+    .msg.user .avatar { background: #c7d2fe; color: var(--brand-dark); font-size: .8rem; font-weight: 700; }
+    .bubble {
+      padding: 11px 15px; border-radius: 17px;
+      line-height: 1.65; font-size: .9rem; white-space: pre-wrap;
+    }
+    .msg.bot  .bubble { background: var(--surface2); color: var(--text); border-bottom-left-radius: 4px; }
+    .msg.user .bubble { background: var(--brand); color: #fff; border-bottom-right-radius: 4px; }
+
+    /* lead capture success */
+    .lead-card {
+      background: var(--green-light); border: 1.5px solid var(--green);
+      border-radius: 14px; padding: 13px 16px; font-size: .88rem; color: #065f46;
+    }
+    .lead-card strong { display: block; font-size: .95rem; margin-bottom: 6px; }
+
+    /* typing */
+    .typing-dots { display: flex; gap: 4px; align-items: center; padding: 3px 0; }
+    .typing-dots span {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--text2);
+      animation: bounce .9s infinite ease-in-out;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: .15s; }
+    .typing-dots span:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+
+    /* welcome */
+    .welcome {
+      margin: auto; text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px 20px;
+    }
+    .welcome-icon {
+      width: 72px; height: 72px; border-radius: 20px;
+      background: linear-gradient(135deg,#6366f1,#a855f7);
+      display: flex; align-items: center; justify-content: center; font-size: 2.2rem;
+    }
+    .welcome h2 { font-size: 1.25rem; font-weight: 800; color: var(--text); }
+    .welcome p  { font-size: .87rem; color: var(--text2); max-width: 300px; line-height: 1.65; }
+    .welcome-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 4px; }
+    .badge-item {
+      padding: 4px 12px; border-radius: 999px; font-size: .75rem; font-weight: 600;
+      background: var(--brand-light); color: var(--brand); border: 1px solid #c7d2fe;
+    }
+
+    /* ── INPUT ── */
+    .input-bar {
+      padding: 13px 18px; border-top: 1px solid var(--border);
+      background: var(--surface); flex-shrink: 0; display: flex; gap: 9px; align-items: flex-end;
+    }
+    #user-input {
+      flex: 1; resize: none; overflow-y: auto; max-height: 100px;
+      padding: 11px 15px; border: 1.5px solid var(--border); border-radius: var(--radius);
+      font-family: inherit; font-size: .91rem; line-height: 1.5;
+      outline: none; transition: border .2s; color: var(--text);
+    }
+    #user-input:focus { border-color: var(--brand); }
+    #user-input::placeholder { color: var(--text2); }
+    #send-btn {
+      width: 42px; height: 42px; border: none; border-radius: 11px;
+      background: var(--brand); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0; transition: background .2s;
+    }
+    #send-btn:hover { background: var(--brand-dark); }
+    #send-btn:disabled { background: var(--border); cursor: default; }
+
+    @media (max-width: 480px) {
+      #app { height: 100vh; max-height: unset; border-radius: 0; }
+      body  { padding: 0; }
+      .msg  { max-width: 88%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- MODAL -->
+<div id="setup-modal">
+  <div class="modal-box">
+    <h2>🔑 API 키 설정</h2>
+    <p>서비스 챗봇을 운영하려면 Anthropic API 키가 필요합니다.<br>
+       키는 브라우저에만 저장됩니다.</p>
+    <input id="api-key-input" type="password" placeholder="sk-ant-..." autocomplete="off" />
+    <button class="modal-btn" onclick="saveKey()">시작하기 / Start</button>
+    <p class="modal-hint">키 발급: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="header-top">
+      <div class="logo">
+        <div class="logo-icon">🇰🇷</div>
+        <div>
+          <div class="logo-text" id="logo-text">정착 컨시어지</div>
+          <div class="logo-sub" id="logo-sub">Korea Settlement Service</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="lang-group">
+          <button class="lang-btn active" onclick="setLang('ko',this)">한국어</button>
+          <button class="lang-btn" onclick="setLang('en',this)">EN</button>
+          <button class="lang-btn" onclick="setLang('zh',this)">中文</button>
+          <button class="lang-btn" onclick="setLang('ja',this)">日本語</button>
+        </div>
+        <button class="key-btn" onclick="showKeyModal()">🔑</button>
+      </div>
+    </div>
+    <div class="service-bar" id="service-bar"></div>
+  </header>
+
+  <div id="messages">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">🌟</div>
+      <h2 id="welcome-title">한국 정착, 저희가 다 해드립니다</h2>
+      <p id="welcome-desc">비자 연장부터 건강보험, 은행 개설까지 — 복잡한 절차를 전담 매니저가 대신 처리해드립니다.</p>
+      <div class="welcome-badges" id="welcome-badges"></div>
+    </div>
+  </div>
+
+  <div class="input-bar">
+    <textarea id="user-input" rows="1" placeholder="궁금한 점을 물어보세요…"></textarea>
+    <button id="send-btn" onclick="sendMessage()" disabled>
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+let apiKey     = localStorage.getItem('concierge_api_key') || '';
+let lang       = 'ko';
+let chatHistory = [];
+let isLoading  = false;
+
+/* ── I18N ── */
+const T = {
+  ko: {
+    welcome: { title:'한국 정착, 저희가 다 해드립니다', desc:'비자 연장부터 건강보험, 은행 개설까지 — 복잡한 절차를 전담 매니저가 대신 처리해드립니다.' },
+    badges: ['비자 연장 대행','외국인등록증','건강보험 가입','은행 계좌 개설','24/7 다국어 지원'],
+    placeholder: '궁금한 점을 물어보세요…',
+    me: '나',
+    services: [
+      { icon:'🛂', label:'비자 연장', q:'비자 연장을 도와주실 수 있나요?' },
+      { icon:'🪪', label:'외국인등록증', q:'외국인등록증 신청을 대신 해주시나요?' },
+      { icon:'🏥', label:'건강보험', q:'건강보험 가입은 어떻게 도와주시나요?' },
+      { icon:'🏦', label:'은행 계좌', q:'은행 계좌 개설도 도와주시나요?' },
+      { icon:'🏠', label:'주거 계약', q:'방 계약할 때 도움받을 수 있나요?' },
+      { icon:'📄', label:'계약서 번역', q:'', link:'contract.html' },
+      { icon:'💬', label:'전담 매니저', q:'전담 매니저 서비스가 궁금해요.' },
+    ],
+    leadSuccess: (name) => `✅ ${name}님, 상담 신청이 완료됐습니다!\n\n전담 매니저가 24시간 이내에 연락드릴 예정입니다. 감사합니다 🙏`,
+  },
+  en: {
+    welcome: { title:'We handle your Korea settlement', desc:'From visa renewal to health insurance and banking — our dedicated managers take care of everything for you.' },
+    badges: ['Visa Renewal','Alien Registration','Health Insurance','Bank Account','24/7 Multilingual'],
+    placeholder: 'Ask us anything…',
+    me: 'Me',
+    services: [
+      { icon:'🛂', label:'Visa Renewal', q:'Can you help me renew my visa?' },
+      { icon:'🪪', label:'Alien Reg.', q:'Can you handle my alien registration card?' },
+      { icon:'🏥', label:'Insurance', q:'How do you help with health insurance?' },
+      { icon:'🏦', label:'Bank Account', q:'Can you help me open a bank account?' },
+      { icon:'🏠', label:'Housing', q:'Can you help me with a rental contract?' },
+      { icon:'📄', label:'Contract Review', q:'', link:'contract.html' },
+      { icon:'💬', label:'My Manager', q:"I'd like to know about the dedicated manager service." },
+    ],
+    leadSuccess: (name) => `✅ ${name}, your consultation request has been submitted!\n\nYour dedicated manager will contact you within 24 hours. Thank you 🙏`,
+  },
+  zh: {
+    welcome: { title:'韩国定居，我们全程代办', desc:'从签证延期到健康保险、银行开户——专属客户经理帮您处理所有繁琐手续。' },
+    badges: ['签证延期代办','外国人登录证','健康保险加入','银行开户','24/7多语言支持'],
+    placeholder: '请告诉我您的需求…',
+    me: '我',
+    services: [
+      { icon:'🛂', label:'签证延期', q:'你们能帮我办理签证延期吗？' },
+      { icon:'🪪', label:'外国人登录证', q:'外国人登录证申请可以帮我代办吗？' },
+      { icon:'🏥', label:'健康保险', q:'你们怎么帮助我加入健康保险？' },
+      { icon:'🏦', label:'银行开户', q:'可以帮我开银行账户吗？' },
+      { icon:'🏠', label:'租房合同', q:'签租房合同时可以帮我吗？' },
+      { icon:'📄', label:'合同翻译', q:'', link:'contract.html' },
+      { icon:'💬', label:'专属客户经理', q:'我想了解一下专属客户经理服务。' },
+    ],
+    leadSuccess: (name) => `✅ ${name}，您的咨询申请已提交！\n\n专属客户经理将在24小时内与您联系。谢谢 🙏`,
+  },
+  ja: {
+    welcome: { title:'韓国定住、すべてお任せください', desc:'ビザ更新から健康保険、銀行口座開設まで — 専任マネージャーが手続きを代行します。' },
+    badges: ['ビザ更新代行','外国人登録証','健康保険加入','銀行口座開設','24/7多言語対応'],
+    placeholder: 'ご質問をどうぞ…',
+    me: '私',
+    services: [
+      { icon:'🛂', label:'ビザ更新', q:'ビザ更新のサポートをお願いできますか？' },
+      { icon:'🪪', label:'外国人登録証', q:'外国人登録証の申請を代行してもらえますか？' },
+      { icon:'🏥', label:'健康保険', q:'健康保険の加入はどのようにサポートしてもらえますか？' },
+      { icon:'🏦', label:'銀行口座', q:'銀行口座の開設もサポートしてもらえますか？' },
+      { icon:'🏠', label:'住居契約', q:'部屋の賃貸契約の際もサポートしてもらえますか？' },
+      { icon:'📄', label:'契約書翻訳', q:'', link:'contract.html' },
+      { icon:'💬', label:'専任マネージャー', q:'専任マネージャーサービスについて教えてください。' },
+    ],
+    leadSuccess: (name) => `✅ ${name}様、ご相談のお申し込みが完了しました！\n\n専任マネージャーが24時間以内にご連絡いたします。ありがとうございます 🙏`,
+  },
+};
+
+/* ── SYSTEM PROMPT ── */
+function systemPrompt() {
+  const langName = {ko:'Korean',en:'English',zh:'Chinese',ja:'Japanese'}[lang];
+  return `You are a warm, professional intake consultant for "정착 컨시어지" (Korea Settlement Concierge), a premium support service for international students and foreign workers in Korea.
+
+YOUR ROLE: Convert visitors into consultation leads. Do NOT give DIY instructions. Instead, show the value of our service and invite them to request a consultation.
+
+OUR SERVICES:
+- 비자 연장 대행: We prepare all documents, book the immigration appointment, and submit everything on the client's behalf
+- 외국인등록증 신청 대행: Full document preparation + in-person accompaniment to the immigration office
+- 국민건강보험 가입 지원: We match the best plan to their visa type and handle enrollment completely
+- 은행 계좌 개설 동행: Document preparation + multilingual staff accompanies the client to the bank
+- 주거 계약 지원: Contract review, translation into their native language, and negotiation support
+- 전담 매니저 1:1: Dedicated personal manager available via KakaoTalk / WeChat / Line, 24/7
+- 언어 지원: Korean, English, Chinese, Japanese
+
+CONVERSATION RULES:
+1. Reply ONLY in ${langName}
+2. When a customer describes any settlement problem → empathize briefly, then explain exactly how OUR TEAM handles it for them (2-3 sentences max)
+3. Never give step-by-step DIY instructions — show service value instead
+4. After 1–2 exchanges about a need, naturally offer to connect them with a manager
+5. To capture a lead, ask for: 성함(name) + 연락처(phone or email) + 비자 종류(visa type)
+6. Keep messages short and warm — 3–4 sentences max
+7. Once you have name + contact + visa, output this marker on its own line (replace values):
+   [LEAD:{"name":"...","contact":"...","visa":"...","need":"...","lang":"${lang}"}]
+   Then confirm warmly that a manager will contact them within 24 hours.`;
+}
+
+/* ── INIT ── */
+window.addEventListener('DOMContentLoaded', () => {
+  if (!apiKey) document.getElementById('setup-modal').classList.remove('hidden');
+  renderServices();
+  applyLangUI();
+  const inp = document.getElementById('user-input');
+  inp.addEventListener('input', () => {
+    inp.style.height = 'auto';
+    inp.style.height = Math.min(inp.scrollHeight, 100) + 'px';
+    document.getElementById('send-btn').disabled = !inp.value.trim() || isLoading;
+  });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+});
+
+/* ── API KEY ── */
+function saveKey() {
+  const v = document.getElementById('api-key-input').value.trim();
+  if (!v.startsWith('sk-ant-')) { alert('올바른 Anthropic API 키를 입력해주세요.'); return; }
+  apiKey = v;
+  localStorage.setItem('concierge_api_key', v);
+  document.getElementById('setup-modal').classList.add('hidden');
+}
+function showKeyModal() {
+  document.getElementById('api-key-input').value = apiKey;
+  document.getElementById('setup-modal').classList.remove('hidden');
+}
+
+/* ── LANGUAGE ── */
+function setLang(l, btn) {
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderServices();
+  applyLangUI();
+}
+function applyLangUI() {
+  const t = T[lang];
+  const wt = document.getElementById('welcome-title');
+  const wd = document.getElementById('welcome-desc');
+  if (wt) wt.textContent = t.welcome.title;
+  if (wd) wd.textContent = t.welcome.desc;
+  document.getElementById('user-input').placeholder = t.placeholder;
+
+  const wb = document.getElementById('welcome-badges');
+  if (wb) {
+    wb.innerHTML = '';
+    t.badges.forEach(b => {
+      const el = document.createElement('span');
+      el.className = 'badge-item'; el.textContent = b;
+      wb.appendChild(el);
+    });
+  }
+}
+
+/* ── SERVICES ── */
+function renderServices() {
+  const bar = document.getElementById('service-bar'); bar.innerHTML = '';
+  T[lang].services.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'svc-chip';
+    btn.innerHTML = `${s.icon} ${s.label}`;
+    btn.onclick = s.link ? () => location.href = s.link : () => submitText(s.q);
+    bar.appendChild(btn);
+  });
+}
+
+/* ── CHAT ── */
+function removeWelcome() { document.getElementById('welcome')?.remove(); }
+
+function addMsg(role, text) {
+  removeWelcome();
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div'); wrap.className = `msg ${role}`;
+  const av = document.createElement('div'); av.className = 'avatar';
+  av.textContent = role === 'bot' ? '정착' : T[lang].me;
+  const bub = document.createElement('div'); bub.className = 'bubble';
+  bub.textContent = text;
+  wrap.appendChild(av); wrap.appendChild(bub);
+  msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addLeadCard(lead) {
+  removeWelcome();
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div'); wrap.className = 'msg bot';
+  const av = document.createElement('div'); av.className = 'avatar'; av.textContent = '정착';
+  const card = document.createElement('div'); card.className = 'lead-card';
+  card.innerHTML = `<strong>${T[lang].leadSuccess(lead.name)}</strong>`;
+  wrap.appendChild(av); wrap.appendChild(card);
+  msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addTyping() {
+  removeWelcome();
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div'); wrap.className = 'msg bot'; wrap.id = 'typing';
+  const av = document.createElement('div'); av.className = 'avatar'; av.textContent = '정착';
+  const bub = document.createElement('div'); bub.className = 'bubble';
+  bub.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  wrap.appendChild(av); wrap.appendChild(bub);
+  msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
+}
+function removeTyping() { document.getElementById('typing')?.remove(); }
+
+function submitText(text) {
+  document.getElementById('user-input').value = text; sendMessage();
+}
+
+async function sendMessage() {
+  const inp = document.getElementById('user-input');
+  const text = inp.value.trim();
+  if (!text || isLoading) return;
+  if (!apiKey) { showKeyModal(); return; }
+
+  inp.value = ''; inp.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+  isLoading = true;
+
+  addMsg('user', text);
+  chatHistory.push({ role:'user', content: text });
+  addTyping();
+
+  try {
+    const raw = await callClaude(systemPrompt(), chatHistory, 800);
+
+    // Parse lead capture
+    const leadMatch = raw.match(/\[LEAD:(\{.*?\})\]/s);
+    const cleanText = raw.replace(/\[LEAD:\{.*?\}\]/s, '').trim();
+
+    removeTyping();
+    if (cleanText) {
+      addMsg('bot', cleanText);
+      chatHistory.push({ role:'assistant', content: cleanText });
+    }
+
+    if (leadMatch) {
+      try {
+        const lead = JSON.parse(leadMatch[1]);
+        saveLead(lead);
+        addLeadCard(lead);
+      } catch(_) {}
+    }
+  } catch(e) {
+    removeTyping();
+    addMsg('bot', `⚠️ ${e.message}`);
+  }
+
+  isLoading = false;
+  document.getElementById('send-btn').disabled = !inp.value.trim();
+}
+
+/* ── LEAD STORAGE ── */
+function saveLead(lead) {
+  const leads = JSON.parse(localStorage.getItem('concierge_leads') || '[]');
+  leads.unshift({
+    id: Date.now(),
+    name: lead.name || '-',
+    contact: lead.contact || '-',
+    visa: lead.visa || '-',
+    need: lead.need || '-',
+    lang: lead.lang || lang,
+    status: 'new',
+    createdAt: new Date().toISOString(),
+    notes: '',
+  });
+  localStorage.setItem('concierge_leads', JSON.stringify(leads));
+}
+
+/* ── API ── */
+async function callClaude(system, messages, maxTokens) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:maxTokens, system, messages }),
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${res.status}`); }
+  const d = await res.json(); return d.content?.[0]?.text || '';
+}
+</script>
+</body>
+</html>

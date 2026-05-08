@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>후기 & FAQ — 정착 컨시어지</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand: #6366f1; --brand-dark: #4f46e5; --brand-light: #eef2ff;
+    --green: #10b981; --green-light: #d1fae5;
+    --orange: #f59e0b; --orange-light: #fef3c7;
+    --gold: #f59e0b;
+    --surface: #fff; --surface2: #f8fafc; --border: #e2e8f0;
+    --text: #0f172a; --text2: #64748b; --radius: 14px;
+    --shadow: 0 4px 20px rgba(99,102,241,.10);
+  }
+  body {
+    font-family: -apple-system,'Pretendard','Noto Sans KR',sans-serif;
+    background: linear-gradient(135deg,#e0e7ff 0%,#fce7f3 50%,#ddd6fe 100%);
+    min-height: 100vh; padding: 20px 16px;
+  }
+  .page { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+  /* TOPBAR */
+  .topbar {
+    background: white; border-radius: var(--radius); padding: 13px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: var(--shadow);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .back-btn {
+    padding: 6px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    background: white; font-size: .8rem; cursor: pointer; color: var(--text2);
+    text-decoration: none; transition: all .15s;
+  }
+  .back-btn:hover { border-color: var(--brand); color: var(--brand); }
+  .page-title { font-size: 1rem; font-weight: 800; color: var(--text); }
+
+  /* LANG */
+  .lang-group { display: flex; border: 1.5px solid var(--border); border-radius: 9px; overflow: hidden; }
+  .lang-btn {
+    padding: 4px 9px; border: none; background: transparent;
+    font-size: .74rem; font-weight: 600; cursor: pointer; color: var(--text2); transition: all .15s;
+  }
+  .lang-btn.active { background: var(--brand); color: white; }
+
+  /* CARD */
+  .card {
+    background: white; border-radius: var(--radius); padding: 28px;
+    box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-size: 1.05rem; font-weight: 800; color: var(--text);
+    margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .card-sub { font-size: .83rem; color: var(--text2); margin-bottom: 22px; line-height: 1.6; }
+
+  /* STAR RATING */
+  .stars-wrap { display: flex; gap: 8px; margin-bottom: 20px; justify-content: center; }
+  .star {
+    font-size: 2.6rem; cursor: pointer; transition: transform .1s;
+    filter: grayscale(1) opacity(.4);
+    user-select: none;
+  }
+  .star.active { filter: none; transform: scale(1.05); }
+  .star:hover { transform: scale(1.15); filter: none; }
+  .rating-label {
+    text-align: center; font-size: .85rem; font-weight: 700;
+    color: var(--brand); margin-bottom: 16px; min-height: 20px;
+  }
+
+  /* REVIEW FORM */
+  .review-textarea {
+    width: 100%; padding: 13px 15px; border: 1.5px solid var(--border);
+    border-radius: 10px; font-family: inherit; font-size: .88rem;
+    line-height: 1.7; resize: vertical; min-height: 110px; outline: none;
+    transition: border .2s; color: var(--text);
+  }
+  .review-textarea:focus { border-color: var(--brand); }
+  .submit-btn {
+    width: 100%; margin-top: 14px; padding: 13px; border: none;
+    border-radius: 10px; background: linear-gradient(135deg,#6366f1,#a855f7);
+    color: white; font-size: .95rem; font-weight: 700; cursor: pointer;
+    transition: opacity .2s;
+  }
+  .submit-btn:hover { opacity: .9; }
+  .submit-btn:disabled { opacity: .5; cursor: default; }
+
+  /* SUCCESS */
+  .success-msg {
+    text-align: center; padding: 30px 20px; display: none;
+  }
+  .success-icon { font-size: 3rem; margin-bottom: 10px; }
+  .success-title { font-size: 1.1rem; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+  .success-sub { font-size: .85rem; color: var(--text2); line-height: 1.6; }
+
+  /* FAQ */
+  .faq-list { display: flex; flex-direction: column; gap: 10px; }
+  .faq-item {
+    border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+  .faq-q {
+    padding: 13px 16px; font-size: .9rem; font-weight: 700; color: var(--text);
+    cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    background: var(--surface2); transition: background .15s;
+  }
+  .faq-q:hover { background: #f1f5f9; }
+  .faq-chevron { font-size: .75rem; color: var(--text2); transition: transform .2s; }
+  .faq-chevron.open { transform: rotate(180deg); }
+  .faq-a {
+    padding: 12px 16px; font-size: .86rem; color: var(--text); line-height: 1.75;
+    border-top: 1px solid var(--border); display: none;
+  }
+  .faq-a.open { display: block; }
+  .faq-empty { color: var(--text2); font-size: .88rem; text-align: center; padding: 28px; }
+
+  /* ADMIN PANEL */
+  .admin-toggle {
+    text-align: center; padding: 12px;
+    font-size: .78rem; color: var(--text2); cursor: pointer;
+  }
+  .admin-toggle:hover { color: var(--brand); }
+
+  .admin-panel { display: none; }
+  .admin-panel.open { display: block; }
+
+  .admin-login-wrap {
+    background: white; border-radius: var(--radius); padding: 24px 28px;
+    box-shadow: var(--shadow); text-align: center;
+  }
+  .admin-login-wrap h3 { font-size: .95rem; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+  .admin-pw-input {
+    width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+    border-radius: 9px; font-size: .9rem; outline: none; margin-bottom: 10px;
+    transition: border .2s;
+  }
+  .admin-pw-input:focus { border-color: var(--brand); }
+  .admin-login-btn {
+    width: 100%; padding: 11px; background: var(--brand); color: white;
+    border: none; border-radius: 9px; font-size: .9rem; font-weight: 700; cursor: pointer;
+  }
+  .admin-login-btn:hover { background: var(--brand-dark); }
+
+  /* ADMIN DASHBOARD */
+  #admin-dashboard { display: none; }
+  .admin-stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .admin-stat {
+    background: var(--surface2); border-radius: 10px; padding: 14px 18px;
+    flex: 1; min-width: 120px;
+  }
+  .admin-stat-label { font-size: .72rem; color: var(--text2); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .4px; }
+  .admin-stat-val { font-size: 1.8rem; font-weight: 800; color: var(--brand); margin-top: 4px; }
+
+  .admin-section-title {
+    font-size: .85rem; font-weight: 800; color: var(--text2); text-transform: uppercase;
+    letter-spacing: .5px; margin: 20px 0 10px;
+  }
+
+  /* REVIEW LIST (admin) */
+  .review-list { display: flex; flex-direction: column; gap: 10px; }
+  .review-card {
+    background: var(--surface2); border-radius: 10px; padding: 14px 16px;
+    border: 1.5px solid var(--border);
+  }
+  .review-card-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .review-stars { font-size: .95rem; }
+  .review-date { font-size: .72rem; color: var(--text2); }
+  .review-lang-badge {
+    font-size: .7rem; padding: 2px 8px; border-radius: 999px;
+    background: var(--brand-light); color: var(--brand); font-weight: 600;
+  }
+  .review-text { font-size: .85rem; color: var(--text); line-height: 1.65; }
+
+  /* AI UPDATE BUTTON */
+  .ai-update-btn {
+    width: 100%; padding: 13px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg,#6366f1,#a855f7); color: white;
+    font-size: .92rem; font-weight: 700; cursor: pointer; transition: opacity .2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .ai-update-btn:hover { opacity: .9; }
+  .ai-update-btn:disabled { opacity: .5; cursor: default; }
+
+  .api-key-input {
+    width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+    border-radius: 9px; font-size: .85rem; font-family: monospace;
+    outline: none; margin-bottom: 10px; transition: border .2s;
+  }
+  .api-key-input:focus { border-color: var(--brand); }
+  .api-key-label { font-size: .78rem; color: var(--text2); margin-bottom: 5px; display: block; }
+
+  /* SPINNER */
+  .spinner-inline {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.4); border-top-color: white;
+    animation: spin .7s linear infinite; display: none;
+  }
+  .spinner-inline.show { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* FAQ EDIT */
+  .faq-edit-area {
+    width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
+    border-radius: 9px; font-size: .85rem; font-family: inherit;
+    line-height: 1.7; resize: vertical; min-height: 160px; outline: none;
+    color: var(--text); transition: border .2s;
+  }
+  .faq-edit-area:focus { border-color: var(--brand); }
+  .save-faq-btn {
+    padding: 9px 22px; background: var(--green); color: white;
+    border: none; border-radius: 9px; font-size: .87rem; font-weight: 700;
+    cursor: pointer; margin-top: 10px; transition: opacity .15s;
+  }
+  .save-faq-btn:hover { opacity: .85; }
+
+  @media (max-width: 480px) {
+    body { padding: 10px 8px; }
+    .card { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <a class="back-btn" href="index.html">← 홈</a>
+      <span class="page-title" id="pt">⭐ 후기 & FAQ</span>
+    </div>
+    <div class="lang-group">
+      <button class="lang-btn active" onclick="setLang('ko',this)">한국어</button>
+      <button class="lang-btn" onclick="setLang('en',this)">EN</button>
+      <button class="lang-btn" onclick="setLang('zh',this)">中文</button>
+      <button class="lang-btn" onclick="setLang('ja',this)">日本語</button>
+    </div>
+  </div>
+
+  <!-- REVIEW FORM -->
+  <div class="card" id="review-card">
+    <div class="card-title" id="rt-title">💬 서비스 후기 남기기</div>
+    <div class="card-sub" id="rt-sub">서비스를 이용해 보셨나요? 솔직한 후기가 저희에게 큰 도움이 됩니다.</div>
+
+    <div id="review-form-wrap">
+      <div class="stars-wrap" id="stars-wrap">
+        <span class="star" data-v="1" onclick="setStar(1)">⭐</span>
+        <span class="star" data-v="2" onclick="setStar(2)">⭐</span>
+        <span class="star" data-v="3" onclick="setStar(3)">⭐</span>
+        <span class="star" data-v="4" onclick="setStar(4)">⭐</span>
+        <span class="star" data-v="5" onclick="setStar(5)">⭐</span>
+      </div>
+      <div class="rating-label" id="rating-label"></div>
+      <textarea class="review-textarea" id="review-text" placeholder="어떤 점이 좋았나요? 어떤 점을 개선하면 좋을까요?"></textarea>
+      <button class="submit-btn" id="submit-btn" onclick="submitReview()">후기 제출하기</button>
+    </div>
+
+    <div class="success-msg" id="success-msg">
+      <div class="success-icon">🙏</div>
+      <div class="success-title" id="success-title">후기를 남겨주셔서 감사합니다!</div>
+      <div class="success-sub" id="success-sub">소중한 의견이 서비스 개선에 활용됩니다.</div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="card">
+    <div class="card-title" id="faq-title">🙋 자주 묻는 질문</div>
+    <div class="faq-list" id="faq-list">
+      <div class="faq-empty" id="faq-empty">아직 FAQ가 없습니다.</div>
+    </div>
+  </div>
+
+  <!-- ADMIN TOGGLE -->
+  <div class="admin-toggle" onclick="toggleAdminPanel()">관리자 패널 ▾</div>
+
+  <!-- ADMIN PANEL -->
+  <div class="admin-panel" id="admin-panel">
+
+    <!-- LOGIN -->
+    <div class="admin-login-wrap" id="admin-login-wrap">
+      <h3>🔐 관리자 로그인</h3>
+      <input class="admin-pw-input" id="admin-pw" type="password" placeholder="비밀번호">
+      <button class="admin-login-btn" onclick="adminLogin()">로그인</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="admin-dashboard">
+      <div class="card">
+        <div class="card-title">📊 후기 현황</div>
+        <div class="admin-stats">
+          <div class="admin-stat">
+            <div class="admin-stat-label">총 후기</div>
+            <div class="admin-stat-val" id="a-total">0</div>
+          </div>
+          <div class="admin-stat">
+            <div class="admin-stat-label">평균 별점</div>
+            <div class="admin-stat-val" id="a-avg">-</div>
+          </div>
+          <div class="admin-stat">
+            <div class="admin-stat-label">5점 후기</div>
+            <div class="admin-stat-val" id="a-5star">0</div>
+          </div>
+        </div>
+
+        <div class="admin-section-title">최근 후기</div>
+        <div class="review-list" id="admin-review-list"></div>
+
+        <div class="admin-section-title">🤖 AI FAQ 자동 업데이트</div>
+        <label class="api-key-label">Anthropic API 키</label>
+        <input class="api-key-input" id="admin-api-key" type="password" placeholder="sk-ant-..." autocomplete="off">
+        <button class="ai-update-btn" id="ai-update-btn" onclick="generateFAQ()">
+          <span class="spinner-inline" id="faq-spinner"></span>
+          <span id="ai-btn-label">✨ 후기 분석 → FAQ 자동 생성</span>
+        </button>
+
+        <div id="faq-edit-section" style="display:none; margin-top:16px;">
+          <div class="admin-section-title">생성된 FAQ (수정 후 저장)</div>
+          <textarea class="faq-edit-area" id="faq-edit-area"></textarea>
+          <button class="save-faq-btn" onclick="saveFAQ()">✅ FAQ 저장 & 반영</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ADMIN_PW = 'concierge2024';
+let lang = 'ko';
+let currentRating = 0;
+
+/* ── I18N ── */
+const T = {
+  ko: {
+    reviewTitle: '💬 서비스 후기 남기기',
+    reviewSub: '서비스를 이용해 보셨나요? 솔직한 후기가 저희에게 큰 도움이 됩니다.',
+    placeholder: '어떤 점이 좋았나요? 어떤 점을 개선하면 좋을까요?',
+    submitBtn: '후기 제출하기',
+    successTitle: '후기를 남겨주셔서 감사합니다!',
+    successSub: '소중한 의견이 서비스 개선에 활용됩니다.',
+    faqTitle: '🙋 자주 묻는 질문',
+    ratingLabels: ['', '아쉬웠어요', '조금 아쉬워요', '보통이에요', '좋았어요', '정말 최고예요! ⭐'],
+  },
+  en: {
+    reviewTitle: '💬 Leave a Review',
+    reviewSub: 'How was your experience with our service? Your honest feedback helps us improve.',
+    placeholder: 'What did you like? What could be better?',
+    submitBtn: 'Submit Review',
+    successTitle: 'Thank you for your review!',
+    successSub: 'Your feedback helps us provide better service.',
+    faqTitle: '🙋 Frequently Asked Questions',
+    ratingLabels: ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent! ⭐'],
+  },
+  zh: {
+    reviewTitle: '💬 留下评价',
+    reviewSub: '您对我们的服务满意吗？您的真实评价对我们非常重要。',
+    placeholder: '哪些方面让您满意？哪些方面还需要改进？',
+    submitBtn: '提交评价',
+    successTitle: '感谢您的评价！',
+    successSub: '您的宝贵意见将用于改善我们的服务。',
+    faqTitle: '🙋 常见问题',
+    ratingLabels: ['', '很差', '一般', '还好', '不错', '非常好！⭐'],
+  },
+  ja: {
+    reviewTitle: '💬 レビューを書く',
+    reviewSub: 'サービスはいかがでしたか？正直なご意見をお聞かせください。',
+    placeholder: 'よかった点、改善できる点を教えてください',
+    submitBtn: 'レビューを送信',
+    successTitle: 'レビューをありがとうございます！',
+    successSub: 'いただいたご意見はサービス改善に活用されます。',
+    faqTitle: '🙋 よくある質問',
+    ratingLabels: ['', 'がっかり', '普通以下', '普通', '良い', '最高！⭐'],
+  },
+};
+
+/* ── LANG ── */
+function setLang(l, btn) {
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyLangUI();
+}
+function applyLangUI() {
+  const t = T[lang];
+  document.getElementById('rt-title').textContent = t.reviewTitle;
+  document.getElementById('rt-sub').textContent = t.reviewSub;
+  document.getElementById('review-text').placeholder = t.placeholder;
+  document.getElementById('submit-btn').textContent = t.submitBtn;
+  document.getElementById('success-title').textContent = t.successTitle;
+  document.getElementById('success-sub').textContent = t.successSub;
+  document.getElementById('faq-title').textContent = t.faqTitle;
+  updateRatingLabel();
+}
+
+/* ── STARS ── */
+function setStar(v) {
+  currentRating = v;
+  document.querySelectorAll('.star').forEach((s, i) => {
+    s.classList.toggle('active', i < v);
+  });
+  updateRatingLabel();
+}
+function updateRatingLabel() {
+  document.getElementById('rating-label').textContent = T[lang].ratingLabels[currentRating] || '';
+}
+document.querySelectorAll('.star').forEach(s => {
+  s.addEventListener('mouseenter', () => {
+    const v = +s.dataset.v;
+    document.querySelectorAll('.star').forEach((st, i) => {
+      st.style.filter = i < v ? 'none' : 'grayscale(1) opacity(.4)';
+    });
+  });
+  s.addEventListener('mouseleave', () => {
+    document.querySelectorAll('.star').forEach((st, i) => {
+      st.style.filter = i < currentRating ? 'none' : 'grayscale(1) opacity(.4)';
+    });
+  });
+});
+
+/* ── SUBMIT REVIEW ── */
+function submitReview() {
+  if (currentRating === 0) { alert('별점을 선택해주세요.'); return; }
+  const text = document.getElementById('review-text').value.trim();
+  const reviews = JSON.parse(localStorage.getItem('concierge_reviews') || '[]');
+  reviews.unshift({
+    id: Date.now(),
+    rating: currentRating,
+    text,
+    lang,
+    createdAt: new Date().toISOString(),
+  });
+  localStorage.setItem('concierge_reviews', JSON.stringify(reviews));
+  document.getElementById('review-form-wrap').style.display = 'none';
+  document.getElementById('success-msg').style.display = 'block';
+}
+
+/* ── FAQ ── */
+function renderFAQ() {
+  const faqData = JSON.parse(localStorage.getItem('concierge_faq') || '[]');
+  const list = document.getElementById('faq-list');
+  const empty = document.getElementById('faq-empty');
+  if (faqData.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  list.innerHTML = faqData.map((f, i) => `
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFAQ(${i},this)">
+        <span>${esc(f.q)}</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-a" id="faq-a-${i}">${esc(f.a)}</div>
+    </div>`).join('');
+}
+function toggleFAQ(i, el) {
+  const body = document.getElementById(`faq-a-${i}`);
+  const ch = el.querySelector('.faq-chevron');
+  body.classList.toggle('open');
+  ch.classList.toggle('open');
+}
+
+/* ── ADMIN ── */
+function toggleAdminPanel() {
+  const panel = document.getElementById('admin-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open') && sessionStorage.getItem('review_admin')) {
+    showAdminDashboard();
+  }
+}
+
+function adminLogin() {
+  const pw = document.getElementById('admin-pw').value;
+  if (pw === ADMIN_PW) {
+    sessionStorage.setItem('review_admin', '1');
+    showAdminDashboard();
+  } else {
+    alert('비밀번호가 올바르지 않습니다.');
+  }
+}
+
+function showAdminDashboard() {
+  document.getElementById('admin-login-wrap').style.display = 'none';
+  document.getElementById('admin-dashboard').style.display = 'block';
+  document.getElementById('admin-api-key').value = localStorage.getItem('concierge_api_key') || '';
+  renderAdminReviews();
+}
+
+function renderAdminReviews() {
+  const reviews = JSON.parse(localStorage.getItem('concierge_reviews') || '[]');
+  document.getElementById('a-total').textContent = reviews.length;
+  if (reviews.length > 0) {
+    const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+    document.getElementById('a-avg').textContent = avg.toFixed(1);
+    document.getElementById('a-5star').textContent = reviews.filter(r => r.rating === 5).length;
+  }
+  const list = document.getElementById('admin-review-list');
+  if (reviews.length === 0) {
+    list.innerHTML = '<div style="color:#aaa;font-size:.85rem;padding:12px;">아직 후기가 없습니다.</div>';
+    return;
+  }
+  const FLAGS = {ko:'🇰🇷',en:'🇺🇸',zh:'🇨🇳',ja:'🇯🇵'};
+  list.innerHTML = reviews.slice(0,10).map(r => `
+    <div class="review-card">
+      <div class="review-card-top">
+        <span class="review-stars">${'⭐'.repeat(r.rating)}</span>
+        <span class="review-lang-badge">${FLAGS[r.lang]||'🌐'}</span>
+        <span class="review-date">${new Date(r.createdAt).toLocaleDateString('ko-KR')}</span>
+      </div>
+      <div class="review-text">${esc(r.text || '(텍스트 없음)')}</div>
+    </div>`).join('');
+}
+
+/* ── AI FAQ GENERATION ── */
+async function generateFAQ() {
+  const apiKey = document.getElementById('admin-api-key').value.trim();
+  if (!apiKey) { alert('API 키를 입력하세요.'); return; }
+  localStorage.setItem('concierge_api_key', apiKey);
+
+  const reviews = JSON.parse(localStorage.getItem('concierge_reviews') || '[]');
+  const leads   = JSON.parse(localStorage.getItem('concierge_leads') || '[]');
+
+  const btn = document.getElementById('ai-update-btn');
+  const spinner = document.getElementById('faq-spinner');
+  const label = document.getElementById('ai-btn-label');
+  btn.disabled = true;
+  spinner.classList.add('show');
+  label.textContent = 'AI 분석 중…';
+
+  const reviewText = reviews.map(r => `[${r.rating}⭐] ${r.text || '(내용없음)'}`).join('\n');
+  const needsText  = leads.map(l => l.need).filter(Boolean).slice(0, 30).join('\n');
+
+  const system = `You are an FAQ generator for "정착 컨시어지" (Korea Settlement Concierge).
+Analyze the provided customer reviews and inquiry topics, then generate 8-10 FAQ items in Korean.
+Return ONLY a JSON array with this structure:
+[{"q":"question","a":"detailed answer in 2-3 sentences"},...]
+Cover topics like: visa renewal, alien registration, health insurance, bank account, housing contracts, pricing, timeline.`;
+
+  const userMsg = `Customer reviews:\n${reviewText || 'No reviews yet.'}\n\nCommon inquiry topics:\n${needsText || 'No inquiries yet.'}`;
+
+  try {
+    const raw = await callClaude(apiKey, system, userMsg);
+    const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+    let faqData;
+    try {
+      faqData = JSON.parse(cleaned);
+    } catch {
+      const m = cleaned.match(/\[[\s\S]*\]/);
+      faqData = m ? JSON.parse(m[0]) : [];
+    }
+    const editArea = document.getElementById('faq-edit-area');
+    editArea.value = JSON.stringify(faqData, null, 2);
+    document.getElementById('faq-edit-section').style.display = 'block';
+  } catch(e) {
+    alert('FAQ 생성 실패: ' + e.message);
+  }
+
+  btn.disabled = false;
+  spinner.classList.remove('show');
+  label.textContent = '✨ 후기 분석 → FAQ 자동 생성';
+}
+
+function saveFAQ() {
+  try {
+    const val = document.getElementById('faq-edit-area').value.trim();
+    const data = JSON.parse(val);
+    localStorage.setItem('concierge_faq', JSON.stringify(data));
+    renderFAQ();
+    document.getElementById('faq-edit-section').style.display = 'none';
+    alert('FAQ가 저장되어 페이지에 반영됐습니다! ✅');
+  } catch(e) {
+    alert('JSON 형식이 올바르지 않습니다. 수정 후 다시 시도해주세요.');
+  }
+}
+
+/* ── API ── */
+async function callClaude(apiKey, system, userMsg) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
+      system,
+      messages: [{ role: 'user', content: userMsg }],
+    }),
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+  const d = await res.json();
+  return d.content?.[0]?.text || '';
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── INIT ── */
+applyLangUI();
+renderFAQ();
+
+// Seed demo FAQ if empty
+const existingFAQ = JSON.parse(localStorage.getItem('concierge_faq') || '[]');
+if (existingFAQ.length === 0) {
+  const demoFAQ = [
+    { q: '비자 연장 신청은 얼마나 일찍 해야 하나요?', a: '비자 만료일 최소 1개월 전에 신청을 시작하는 것을 권장합니다. 저희 서비스를 이용하시면 필요 서류 준비부터 출입국관리사무소 접수까지 모두 대행해 드립니다.' },
+    { q: '외국인등록증은 입국 후 언제까지 만들어야 하나요?', a: '입국일로부터 90일 이내에 거주지 관할 출입국관리사무소에 신청해야 합니다. 저희가 모든 필요 서류를 준비하고 직접 동행해 드립니다.' },
+    { q: '한국 은행 계좌 개설이 외국인도 가능한가요?', a: '네, 외국인등록증이 있으면 대부분의 은행에서 계좌를 개설할 수 있습니다. 저희 다국어 직원이 은행까지 동행하여 도움을 드립니다.' },
+    { q: '건강보험은 의무인가요?', a: '한국에 6개월 이상 체류하는 외국인은 국민건강보험에 의무 가입해야 합니다. 직장을 다니시면 회사에서 자동 가입되며, 그 외의 경우 저희가 지역가입자로 신청을 도와드립니다.' },
+    { q: '서비스 비용은 어떻게 되나요?', a: '서비스 종류와 내용에 따라 달라집니다. 무료 초기 상담을 통해 필요한 서비스를 파악하고 맞춤 견적을 안내해 드립니다. 상담 신청은 챗봇을 통해 가능합니다.' },
+  ];
+  localStorage.setItem('concierge_faq', JSON.stringify(demoFAQ));
+  renderFAQ();
+}
+</script>
+</body>
+</html>

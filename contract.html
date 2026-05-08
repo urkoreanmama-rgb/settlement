@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>계약서 번역·분석 — 정착 컨시어지</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand: #6366f1; --brand-dark: #4f46e5; --brand-light: #eef2ff;
+    --green: #10b981; --green-light: #d1fae5;
+    --orange: #f59e0b; --orange-light: #fef3c7;
+    --red: #ef4444; --red-light: #fee2e2;
+    --surface: #fff; --surface2: #f8fafc; --border: #e2e8f0;
+    --text: #0f172a; --text2: #64748b; --radius: 14px;
+    --shadow: 0 4px 32px rgba(99,102,241,.13);
+  }
+  body {
+    font-family: -apple-system, "Pretendard", "Noto Sans KR", sans-serif;
+    background: linear-gradient(135deg,#e0e7ff 0%,#fce7f3 50%,#ddd6fe 100%);
+    min-height: 100vh; padding: 16px;
+  }
+
+  /* ── MODAL ── */
+  #setup-modal {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(15,23,42,.6); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  #setup-modal.hidden { display: none; }
+  .modal-box {
+    background: var(--surface); border-radius: 20px; padding: 36px 32px;
+    max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.18);
+  }
+  .modal-box h2 { font-size: 1.35rem; font-weight: 700; margin-bottom: 8px; }
+  .modal-box p { font-size: .88rem; color: var(--text2); margin-bottom: 22px; line-height: 1.6; }
+  .modal-box input {
+    width: 100%; padding: 11px 15px; border: 1.5px solid var(--border);
+    border-radius: var(--radius); font-size: .93rem; outline: none;
+    font-family: monospace; transition: border .2s;
+  }
+  .modal-box input:focus { border-color: var(--brand); }
+  .modal-btn {
+    width: 100%; margin-top: 14px; padding: 13px; border: none;
+    border-radius: var(--radius); background: var(--brand); color: #fff;
+    font-size: 1rem; font-weight: 700; cursor: pointer; transition: background .2s;
+  }
+  .modal-btn:hover { background: var(--brand-dark); }
+  .modal-hint { font-size: .76rem; color: var(--text2); margin-top: 8px; text-align: center; }
+  .modal-hint a { color: var(--brand); text-decoration: none; }
+
+  /* ── LAYOUT ── */
+  .page {
+    max-width: 780px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  /* ── HEADER ── */
+  .topbar {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 13px 20px; display: flex; align-items: center;
+    justify-content: space-between; box-shadow: var(--shadow);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .back-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 12px; border: 1.5px solid var(--border); border-radius: 9px;
+    background: transparent; font-size: .8rem; cursor: pointer; color: var(--text2);
+    text-decoration: none; transition: all .15s;
+  }
+  .back-btn:hover { border-color: var(--brand); color: var(--brand); }
+  .page-title { font-size: 1.05rem; font-weight: 800; color: var(--text); }
+  .page-sub   { font-size: .72rem; color: var(--text2); }
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .lang-group { display: flex; border: 1.5px solid var(--border); border-radius: 9px; overflow: hidden; }
+  .lang-btn {
+    padding: 4px 9px; border: none; background: transparent;
+    font-size: .74rem; font-weight: 600; cursor: pointer; color: var(--text2); transition: all .15s;
+  }
+  .lang-btn.active { background: var(--brand); color: #fff; }
+  .key-btn {
+    padding: 5px 10px; border: 1.5px solid var(--border); border-radius: 9px;
+    background: transparent; font-size: .78rem; cursor: pointer; color: var(--text2);
+  }
+  .key-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 24px; box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 7px;
+  }
+
+  /* ── CONTRACT TYPE ── */
+  .type-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .type-chip {
+    padding: 7px 15px; border: 1.5px solid var(--border); border-radius: 999px;
+    background: var(--surface2); font-size: .82rem; font-weight: 600;
+    color: var(--text2); cursor: pointer; transition: all .15s;
+  }
+  .type-chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .type-chip:hover:not(.active) { border-color: var(--brand); color: var(--brand); }
+
+  /* ── UPLOAD AREA ── */
+  .upload-area {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 28px 20px; text-align: center; cursor: pointer;
+    transition: all .2s; background: var(--surface2); position: relative;
+  }
+  .upload-area:hover, .upload-area.drag-over {
+    border-color: var(--brand); background: var(--brand-light);
+  }
+  .upload-area input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+  .upload-label { font-size: .9rem; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .upload-hint  { font-size: .78rem; color: var(--text2); }
+
+  .divider {
+    display: flex; align-items: center; gap: 10px; color: var(--text2);
+    font-size: .78rem; font-weight: 600; margin: 4px 0;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  #contract-text {
+    width: 100%; min-height: 160px; max-height: 300px; resize: vertical;
+    padding: 13px 15px; border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: .85rem; line-height: 1.65; outline: none;
+    color: var(--text); background: var(--surface2); transition: border .2s;
+  }
+  #contract-text:focus { border-color: var(--brand); background: #fff; }
+
+  .char-count { font-size: .75rem; color: var(--text2); text-align: right; margin-top: 4px; }
+
+  /* ── ANALYZE BTN ── */
+  .analyze-btn {
+    width: 100%; padding: 15px; border: none; border-radius: var(--radius);
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    color: #fff; font-size: 1rem; font-weight: 700;
+    cursor: pointer; transition: opacity .2s; display: flex;
+    align-items: center; justify-content: center; gap: 8px;
+  }
+  .analyze-btn:hover { opacity: .9; }
+  .analyze-btn:disabled { opacity: .5; cursor: default; }
+
+  /* ── PROGRESS ── */
+  #progress-bar {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 20px 24px; display: none;
+    align-items: center; gap: 14px; box-shadow: var(--shadow);
+  }
+  #progress-bar.show { display: flex; }
+  .spinner {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 3px solid var(--brand-light); border-top-color: var(--brand);
+    animation: spin .7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progress-text { font-size: .9rem; color: var(--text2); }
+  .progress-text strong { color: var(--text); }
+
+  /* ── RESULTS ── */
+  #results { display: none; flex-direction: column; gap: 16px; }
+  #results.show { display: flex; }
+
+  /* Overall risk banner */
+  .risk-banner {
+    border-radius: var(--radius); padding: 16px 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .risk-banner.low    { background: var(--green-light); border: 1.5px solid #6ee7b7; }
+  .risk-banner.medium { background: var(--orange-light); border: 1.5px solid #fcd34d; }
+  .risk-banner.high   { background: var(--red-light); border: 1.5px solid #fca5a5; }
+  .risk-icon { font-size: 1.6rem; }
+  .risk-title { font-size: 1rem; font-weight: 700; }
+  .risk-banner.low    .risk-title { color: #065f46; }
+  .risk-banner.medium .risk-title { color: #92400e; }
+  .risk-banner.high   .risk-title { color: #991b1b; }
+  .risk-desc { font-size: .83rem; margin-top: 2px; }
+  .risk-banner.low    .risk-desc { color: #047857; }
+  .risk-banner.medium .risk-desc { color: #b45309; }
+  .risk-banner.high   .risk-desc { color: #dc2626; }
+
+  /* Summary */
+  .summary-text {
+    font-size: .9rem; line-height: 1.75; color: var(--text);
+    background: var(--surface2); border-radius: 10px; padding: 16px;
+  }
+
+  /* Clause cards */
+  .clauses-grid { display: flex; flex-direction: column; gap: 10px; }
+  .clause-card {
+    border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden;
+  }
+  .clause-header {
+    padding: 11px 16px; display: flex; align-items: center;
+    justify-content: space-between; cursor: pointer; background: var(--surface2);
+    transition: background .15s;
+  }
+  .clause-header:hover { background: #f1f5f9; }
+  .clause-title { font-size: .88rem; font-weight: 700; color: var(--text); }
+  .risk-badge {
+    padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700;
+    white-space: nowrap;
+  }
+  .risk-badge.low    { background: var(--green-light); color: #065f46; }
+  .risk-badge.medium { background: var(--orange-light); color: #92400e; }
+  .risk-badge.high   { background: var(--red-light); color: #991b1b; }
+  .clause-body {
+    padding: 13px 16px; border-top: 1px solid var(--border);
+    font-size: .85rem; line-height: 1.7; color: var(--text);
+    display: none;
+  }
+  .clause-body.open { display: block; }
+  .clause-summary { margin-bottom: 8px; }
+  .clause-note {
+    font-size: .82rem; color: var(--text2); padding: 8px 12px;
+    background: var(--surface2); border-radius: 8px; border-left: 3px solid var(--brand);
+  }
+  .clause-note.high   { border-left-color: var(--red); background: var(--red-light); color: #991b1b; }
+  .clause-note.medium { border-left-color: var(--orange); background: var(--orange-light); color: #92400e; }
+  .clause-note.low    { border-left-color: var(--green); background: var(--green-light); color: #065f46; }
+  .chevron { font-size: .7rem; color: var(--text2); transition: transform .2s; }
+  .chevron.open { transform: rotate(180deg); }
+
+  /* Risk points */
+  .risk-list { display: flex; flex-direction: column; gap: 8px; }
+  .risk-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 10px 14px; background: var(--red-light);
+    border-radius: 9px; font-size: .85rem; color: #991b1b; line-height: 1.55;
+  }
+  .risk-item-icon { flex-shrink: 0; font-size: 1rem; }
+
+  /* CTA */
+  .cta-card {
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    border-radius: var(--radius); padding: 24px;
+    color: white; text-align: center;
+  }
+  .cta-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 6px; }
+  .cta-desc  { font-size: .85rem; opacity: .88; margin-bottom: 18px; line-height: 1.55; }
+  .cta-btn {
+    display: inline-block; padding: 12px 28px;
+    background: white; color: var(--brand); border-radius: 10px;
+    font-size: .9rem; font-weight: 700; text-decoration: none;
+    transition: opacity .15s; cursor: pointer; border: none;
+  }
+  .cta-btn:hover { opacity: .9; }
+
+  /* Reset btn */
+  .reset-btn {
+    padding: 10px 20px; border: 1.5px solid var(--border); border-radius: 9px;
+    background: var(--surface); font-size: .85rem; cursor: pointer; color: var(--text2);
+    transition: all .15s; align-self: center;
+  }
+  .reset-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+  @media (max-width: 480px) {
+    body { padding: 8px; }
+    .card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- API KEY MODAL -->
+<div id="setup-modal">
+  <div class="modal-box">
+    <h2>🔑 API 키 설정</h2>
+    <p>계약서 분석을 위해 Anthropic API 키가 필요합니다.<br>키는 브라우저에만 저장됩니다.</p>
+    <input id="api-key-input" type="password" placeholder="sk-ant-..." autocomplete="off">
+    <button class="modal-btn" onclick="saveKey()">시작하기 / Start</button>
+    <p class="modal-hint">키 발급: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></p>
+  </div>
+</div>
+
+<div class="page">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <a class="back-btn" href="index.html">← 홈</a>
+      <div>
+        <div class="page-title">📄 계약서 번역·분석</div>
+        <div class="page-sub">Contract Review & Translation</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="lang-group">
+        <button class="lang-btn active" onclick="setLang('ko',this)">한국어</button>
+        <button class="lang-btn" onclick="setLang('en',this)">EN</button>
+        <button class="lang-btn" onclick="setLang('zh',this)">中文</button>
+        <button class="lang-btn" onclick="setLang('ja',this)">日本語</button>
+      </div>
+      <button class="key-btn" onclick="showKeyModal()">🔑</button>
+    </div>
+  </div>
+
+  <!-- INPUT SECTION -->
+  <div id="input-section">
+    <!-- Contract Type -->
+    <div class="card">
+      <div class="card-title">📋 <span id="lbl-type">계약서 종류</span></div>
+      <div class="type-chips" id="type-chips">
+        <button class="type-chip active" data-type="임대차계약서" onclick="selectType(this)">🏠 임대차계약서</button>
+        <button class="type-chip" data-type="근로계약서" onclick="selectType(this)">💼 근로계약서</button>
+        <button class="type-chip" data-type="용역계약서" onclick="selectType(this)">🤝 용역계약서</button>
+        <button class="type-chip" data-type="기타계약서" onclick="selectType(this)">📃 기타</button>
+      </div>
+    </div>
+
+    <!-- Upload + Paste -->
+    <div class="card">
+      <div class="card-title">📤 <span id="lbl-upload">계약서 내용 입력</span></div>
+
+      <div class="upload-area" id="upload-area"
+        ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+        <input type="file" id="file-input" accept=".txt,.md" onchange="fileChosen(event)">
+        <div class="upload-icon">📂</div>
+        <div class="upload-label" id="lbl-drop">파일을 드래그하거나 클릭해서 업로드</div>
+        <div class="upload-hint" id="lbl-drop-hint">.txt 파일 지원 · PDF는 텍스트 복사 후 아래에 붙여넣기</div>
+      </div>
+
+      <div class="divider" id="lbl-or">또는</div>
+
+      <textarea id="contract-text"
+        placeholder="계약서 내용을 여기에 붙여넣으세요…"
+        oninput="updateCharCount()"></textarea>
+      <div class="char-count"><span id="char-count">0</span>자</div>
+    </div>
+
+    <!-- Analyze Button -->
+    <button class="analyze-btn" id="analyze-btn" onclick="analyze()" disabled>
+      <span>🔍</span> <span id="lbl-analyze">계약서 분석하기</span>
+    </button>
+  </div>
+
+  <!-- PROGRESS -->
+  <div id="progress-bar">
+    <div class="spinner"></div>
+    <div class="progress-text"><strong id="lbl-analyzing">AI가 계약서를 분석 중입니다</strong><br><span id="lbl-wait">잠시만 기다려주세요…</span></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+    <!-- Overall risk banner -->
+    <div id="risk-banner" class="risk-banner low">
+      <div class="risk-icon" id="risk-icon">✅</div>
+      <div>
+        <div class="risk-title" id="risk-title">전반적으로 안전한 계약서입니다</div>
+        <div class="risk-desc" id="risk-desc">큰 문제는 없지만 아래 내용을 확인해 주세요.</div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="card">
+      <div class="card-title">📋 <span id="lbl-summary-title">핵심 요약</span></div>
+      <div class="summary-text" id="summary-text"></div>
+    </div>
+
+    <!-- Clauses -->
+    <div class="card">
+      <div class="card-title">📌 <span id="lbl-clauses-title">조항별 분석</span></div>
+      <div class="clauses-grid" id="clauses-grid"></div>
+    </div>
+
+    <!-- Risk points -->
+    <div class="card" id="risk-card" style="display:none;">
+      <div class="card-title">⚠️ <span id="lbl-risks-title">법적 리스크 포인트</span></div>
+      <div class="risk-list" id="risk-list"></div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-card">
+      <div class="cta-title" id="cta-title">전문가 검토가 필요하신가요?</div>
+      <div class="cta-desc" id="cta-desc">정착 컨시어지의 법무 파트너를 통해 계약서를 안전하게 검토받으세요.<br>전담 매니저가 24시간 이내에 연락드립니다.</div>
+      <button class="cta-btn" onclick="goConsult()" id="cta-btn">무료 상담 신청하기</button>
+    </div>
+
+    <button class="reset-btn" onclick="resetForm()" id="lbl-reset">↩ 다른 계약서 분석하기</button>
+  </div>
+</div>
+
+<script>
+let apiKey = localStorage.getItem('concierge_api_key') || '';
+let lang = 'ko';
+let contractType = '임대차계약서';
+
+/* ── I18N ── */
+const T = {
+  ko: {
+    type: '계약서 종류', upload: '계약서 내용 입력',
+    drop: '파일을 드래그하거나 클릭해서 업로드', dropHint: '.txt 파일 지원 · PDF는 텍스트 복사 후 아래에 붙여넣기',
+    or: '또는', placeholder: '계약서 내용을 여기에 붙여넣으세요…',
+    analyze: '계약서 분석하기', analyzing: 'AI가 계약서를 분석 중입니다', wait: '잠시만 기다려주세요…',
+    summaryTitle: '핵심 요약', clausesTitle: '조항별 분석', risksTitle: '법적 리스크 포인트',
+    ctaTitle: '전문가 검토가 필요하신가요?',
+    ctaDesc: '정착 컨시어지의 법무 파트너를 통해 계약서를 안전하게 검토받으세요.\n전담 매니저가 24시간 이내에 연락드립니다.',
+    ctaBtn: '무료 상담 신청하기', reset: '↩ 다른 계약서 분석하기',
+    riskLabel: { low: '안전', medium: '주의', high: '위험' },
+    overallRisk: {
+      low:    { icon:'✅', title:'전반적으로 안전한 계약서입니다', desc:'큰 이슈는 없으나 아래 조항을 꼭 확인하세요.' },
+      medium: { icon:'⚠️', title:'일부 주의가 필요한 조항이 있습니다', desc:'계약 전 아래 리스크 항목을 반드시 확인하세요.' },
+      high:   { icon:'🚨', title:'중대한 리스크가 발견되었습니다', desc:'전문가 검토 없이 서명하지 마세요.' },
+    },
+    outputLang: '한국어',
+  },
+  en: {
+    type: 'Contract Type', upload: 'Enter Contract Content',
+    drop: 'Drag & drop or click to upload', dropHint: '.txt files supported · For PDF, copy-paste text below',
+    or: 'or', placeholder: 'Paste contract content here…',
+    analyze: 'Analyze Contract', analyzing: 'AI is analyzing your contract', wait: 'Please wait…',
+    summaryTitle: 'Key Summary', clausesTitle: 'Clause-by-Clause Analysis', risksTitle: 'Legal Risk Points',
+    ctaTitle: 'Need expert review?',
+    ctaDesc: 'Have your contract safely reviewed by our legal partner.\nA dedicated manager will contact you within 24 hours.',
+    ctaBtn: 'Request Free Consultation', reset: '↩ Analyze another contract',
+    riskLabel: { low: 'Safe', medium: 'Caution', high: 'Risk' },
+    overallRisk: {
+      low:    { icon:'✅', title:'This contract looks generally safe', desc:'No major issues, but review the clauses below.' },
+      medium: { icon:'⚠️', title:'Some clauses need attention', desc:'Review the risk items below before signing.' },
+      high:   { icon:'🚨', title:'Significant risks detected', desc:'Do not sign without expert review.' },
+    },
+    outputLang: 'English',
+  },
+  zh: {
+    type: '合同类型', upload: '输入合同内容',
+    drop: '拖放文件或点击上传', dropHint: '支持.txt文件 · PDF请复制文字粘贴到下方',
+    or: '或者', placeholder: '请在此粘贴合同内容…',
+    analyze: '分析合同', analyzing: 'AI正在分析您的合同', wait: '请稍候…',
+    summaryTitle: '核心摘要', clausesTitle: '条款逐项分析', risksTitle: '法律风险点',
+    ctaTitle: '需要专业审查吗？',
+    ctaDesc: '通过我们的法律合作伙伴安全审查您的合同。\n专属客户经理将在24小时内与您联系。',
+    ctaBtn: '申请免费咨询', reset: '↩ 分析其他合同',
+    riskLabel: { low: '安全', medium: '注意', high: '风险' },
+    overallRisk: {
+      low:    { icon:'✅', title:'这份合同总体安全', desc:'没有重大问题，但请查看下方条款。' },
+      medium: { icon:'⚠️', title:'部分条款需要注意', desc:'签署前请务必确认下方风险项目。' },
+      high:   { icon:'🚨', title:'发现重大风险', desc:'未经专业审查请勿签署。' },
+    },
+    outputLang: '中文',
+  },
+  ja: {
+    type: '契約書の種類', upload: '契約書の内容を入力',
+    drop: 'ファイルをドラッグまたはクリックしてアップロード', dropHint: '.txtファイル対応 · PDFはテキストをコピーして下に貼り付け',
+    or: 'または', placeholder: '契約書の内容をここに貼り付けてください…',
+    analyze: '契約書を分析する', analyzing: 'AIが契約書を分析中です', wait: 'しばらくお待ちください…',
+    summaryTitle: '重要事項の要約', clausesTitle: '条項別分析', risksTitle: '法的リスクポイント',
+    ctaTitle: '専門家のレビューが必要ですか？',
+    ctaDesc: '法務パートナーを通じて安全に契約書を審査します。\n専任マネージャーが24時間以内にご連絡いたします。',
+    ctaBtn: '無料相談を申し込む', reset: '↩ 別の契約書を分析する',
+    riskLabel: { low: '安全', medium: '注意', high: '危険' },
+    overallRisk: {
+      low:    { icon:'✅', title:'全体的に安全な契約書です', desc:'大きな問題はありませんが、下記条項をご確認ください。' },
+      medium: { icon:'⚠️', title:'一部の条項に注意が必要です', desc:'署名前に下記リスク項目を必ず確認してください。' },
+      high:   { icon:'🚨', title:'重大なリスクが発見されました', desc:'専門家のレビューなしに署名しないでください。' },
+    },
+    outputLang: '日本語',
+  },
+};
+
+/* ── INIT ── */
+window.addEventListener('DOMContentLoaded', () => {
+  if (!apiKey) document.getElementById('setup-modal').classList.remove('hidden');
+  applyLangUI();
+  document.getElementById('contract-text').addEventListener('input', checkReady);
+});
+
+/* ── API KEY ── */
+function saveKey() {
+  const v = document.getElementById('api-key-input').value.trim();
+  if (!v.startsWith('sk-ant-')) { alert('올바른 Anthropic API 키를 입력해주세요.'); return; }
+  apiKey = v;
+  localStorage.setItem('concierge_api_key', v);
+  document.getElementById('setup-modal').classList.add('hidden');
+  checkReady();
+}
+function showKeyModal() {
+  document.getElementById('api-key-input').value = apiKey;
+  document.getElementById('setup-modal').classList.remove('hidden');
+}
+
+/* ── LANG ── */
+function setLang(l, btn) {
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyLangUI();
+}
+function applyLangUI() {
+  const t = T[lang];
+  setText('lbl-type', t.type);
+  setText('lbl-upload', t.upload);
+  setText('lbl-drop', t.drop);
+  setText('lbl-drop-hint', t.dropHint);
+  setText('lbl-or', t.or);
+  setText('lbl-analyze', t.analyze);
+  setText('lbl-analyzing', t.analyzing);
+  setText('lbl-wait', t.wait);
+  setText('lbl-summary-title', t.summaryTitle);
+  setText('lbl-clauses-title', t.clausesTitle);
+  setText('lbl-risks-title', t.risksTitle);
+  setText('cta-title', t.ctaTitle);
+  setText('cta-desc', t.ctaDesc);
+  setText('cta-btn', t.ctaBtn);
+  setText('lbl-reset', t.reset);
+  document.getElementById('contract-text').placeholder = t.placeholder;
+}
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+/* ── CONTRACT TYPE ── */
+function selectType(el) {
+  document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  contractType = el.dataset.type;
+}
+
+/* ── FILE UPLOAD ── */
+function dragOver(e)  { e.preventDefault(); document.getElementById('upload-area').classList.add('drag-over'); }
+function dragLeave(e) { document.getElementById('upload-area').classList.remove('drag-over'); }
+function dropFile(e) {
+  e.preventDefault();
+  dragLeave(e);
+  const file = e.dataTransfer.files[0];
+  if (file) readFile(file);
+}
+function fileChosen(e) {
+  const file = e.target.files[0];
+  if (file) readFile(file);
+}
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('contract-text').value = ev.target.result;
+    updateCharCount(); checkReady();
+    document.getElementById('lbl-drop').textContent = `✅ ${file.name}`;
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function updateCharCount() {
+  const len = document.getElementById('contract-text').value.length;
+  document.getElementById('char-count').textContent = len.toLocaleString();
+  checkReady();
+}
+
+function checkReady() {
+  const hasText = document.getElementById('contract-text').value.trim().length > 50;
+  const hasKey  = !!apiKey;
+  document.getElementById('analyze-btn').disabled = !(hasText && hasKey);
+}
+
+/* ── ANALYZE ── */
+async function analyze() {
+  const text = document.getElementById('contract-text').value.trim();
+  if (!text || !apiKey) return;
+
+  document.getElementById('input-section').style.display = 'none';
+  document.getElementById('progress-bar').classList.add('show');
+  document.getElementById('results').classList.remove('show');
+
+  try {
+    const raw = await callClaude(buildPrompt(text));
+    const data = parseResponse(raw);
+    renderResults(data);
+    document.getElementById('progress-bar').classList.remove('show');
+    document.getElementById('results').classList.add('show');
+  } catch(e) {
+    document.getElementById('progress-bar').classList.remove('show');
+    document.getElementById('input-section').style.display = 'block';
+    alert('분석 중 오류가 발생했습니다: ' + e.message);
+  }
+}
+
+function buildPrompt(text) {
+  const outputLang = T[lang].outputLang;
+  return {
+    system: `You are a legal document analyst specializing in Korean contracts for foreign residents.
+Analyze the provided contract and return a JSON object ONLY (no markdown, no extra text).
+
+The JSON must follow this exact structure:
+{
+  "contractType": "detected contract type in ${outputLang}",
+  "overallRisk": "low" | "medium" | "high",
+  "summary": "2-3 sentence overview in ${outputLang}",
+  "clauses": [
+    {
+      "title": "clause name in ${outputLang}",
+      "summary": "what this clause says in ${outputLang} (1-2 sentences)",
+      "risk": "low" | "medium" | "high",
+      "note": "why this matters or risk explanation in ${outputLang} (1 sentence)"
+    }
+  ],
+  "riskPoints": ["risk description in ${outputLang}", ...],
+  "recommendation": "professional advice note in ${outputLang} (1-2 sentences)"
+}
+
+Rules:
+- Output language: ${outputLang}
+- Identify 5-8 key clauses
+- riskPoints: list only if overallRisk is medium or high (empty array if low)
+- Be concise and practical — this is for a foreign resident who may not know Korean law
+- Flag: deposit protection, notice periods, termination conditions, liability clauses, automatic renewal, wage terms, probation conditions`,
+    messages: [{ role: 'user', content: `Contract type: ${contractType}\n\n${text.slice(0, 8000)}` }],
+  };
+}
+
+function parseResponse(raw) {
+  // Strip markdown code fences if present
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch(e) {
+    // Fallback: try to extract JSON object
+    const m = cleaned.match(/\{[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]);
+    throw new Error('응답 파싱 실패');
+  }
+}
+
+function renderResults(data) {
+  const t = T[lang];
+
+  // Overall risk banner
+  const risk = data.overallRisk || 'medium';
+  const banner = document.getElementById('risk-banner');
+  const info = t.overallRisk[risk];
+  banner.className = `risk-banner ${risk}`;
+  document.getElementById('risk-icon').textContent = info.icon;
+  document.getElementById('risk-title').textContent = info.title;
+  document.getElementById('risk-desc').textContent = info.desc;
+
+  // Summary
+  document.getElementById('summary-text').textContent = data.summary || '';
+
+  // Clauses
+  const grid = document.getElementById('clauses-grid');
+  grid.innerHTML = '';
+  (data.clauses || []).forEach((cl, i) => {
+    const riskLabel = t.riskLabel[cl.risk] || cl.risk;
+    const div = document.createElement('div');
+    div.className = 'clause-card';
+    div.innerHTML = `
+      <div class="clause-header" onclick="toggleClause(this)">
+        <span class="clause-title">${esc(cl.title)}</span>
+        <span style="display:flex;gap:8px;align-items:center;">
+          <span class="risk-badge ${cl.risk}">${riskLabel}</span>
+          <span class="chevron">▼</span>
+        </span>
+      </div>
+      <div class="clause-body">
+        <div class="clause-summary">${esc(cl.summary)}</div>
+        <div class="clause-note ${cl.risk}">💡 ${esc(cl.note)}</div>
+      </div>`;
+    grid.appendChild(div);
+    // Auto-open high risk clauses
+    if (cl.risk === 'high') {
+      div.querySelector('.clause-body').classList.add('open');
+      div.querySelector('.chevron').classList.add('open');
+    }
+  });
+
+  // Risk points
+  const riskList = document.getElementById('risk-list');
+  const riskCard = document.getElementById('risk-card');
+  const points = data.riskPoints || [];
+  if (points.length > 0) {
+    riskCard.style.display = 'block';
+    riskList.innerHTML = points.map(p =>
+      `<div class="risk-item"><span class="risk-item-icon">⚠️</span><span>${esc(p)}</span></div>`
+    ).join('');
+  } else {
+    riskCard.style.display = 'none';
+  }
+}
+
+function toggleClause(header) {
+  const body    = header.nextElementSibling;
+  const chevron = header.querySelector('.chevron');
+  body.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── CTA ── */
+function goConsult() {
+  // Save a pre-lead and go back to chatbot
+  const leads = JSON.parse(localStorage.getItem('concierge_leads') || '[]');
+  leads.unshift({
+    id: Date.now(),
+    name: '-',
+    contact: '-',
+    visa: '-',
+    need: `계약서 검토 요청 (${contractType})`,
+    lang: lang,
+    status: 'new',
+    createdAt: new Date().toISOString(),
+    notes: '계약서 분석 페이지에서 상담 신청',
+  });
+  localStorage.setItem('concierge_leads', JSON.stringify(leads));
+  location.href = 'index.html';
+}
+
+function resetForm() {
+  document.getElementById('contract-text').value = '';
+  document.getElementById('char-count').textContent = '0';
+  document.getElementById('lbl-drop').textContent = T[lang].drop;
+  document.getElementById('file-input').value = '';
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('input-section').style.display = 'block';
+  checkReady();
+  window.scrollTo(0,0);
+}
+
+/* ── API ── */
+async function callClaude({ system, messages }) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
+      system,
+      messages,
+    }),
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+  const d = await res.json();
+  return d.content?.[0]?.text || '';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>온보딩 시퀀스 — 정착 컨시어지</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand: #6366f1; --brand-dark: #4f46e5; --brand-light: #eef2ff;
+    --green: #10b981; --green-light: #d1fae5;
+    --orange: #f59e0b; --orange-light: #fef3c7;
+    --red: #ef4444; --red-light: #fee2e2;
+    --surface: #fff; --surface2: #f8fafc; --border: #e2e8f0;
+    --text: #0f172a; --text2: #64748b; --radius: 14px;
+    --shadow: 0 1px 4px rgba(0,0,0,.07);
+  }
+  body { font-family: 'Apple SD Gothic Neo','Noto Sans KR',sans-serif; background: #f0f2f5; min-height:100vh; }
+
+  /* TOPBAR */
+  .topbar {
+    background: white; padding: 0 28px; height: 58px; display: flex;
+    align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border); position: sticky; top:0; z-index:50;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .topbar-left { display:flex; align-items:center; gap:12px; }
+  .back-btn {
+    padding:6px 13px; border:1.5px solid var(--border); border-radius:8px;
+    background:white; font-size:.8rem; cursor:pointer; color:var(--text2);
+    text-decoration:none; transition:all .15s;
+  }
+  .back-btn:hover { border-color:var(--brand); color:var(--brand); }
+  .topbar-title { font-size:1rem; font-weight:800; color:var(--text); }
+  .topbar-right { display:flex; gap:10px; }
+  .add-btn {
+    padding:8px 18px; background:var(--brand); color:white; border:none;
+    border-radius:8px; font-size:.85rem; font-weight:700; cursor:pointer; transition:background .15s;
+  }
+  .add-btn:hover { background:var(--brand-dark); }
+
+  .main { padding:24px 28px; max-width:1100px; margin:0 auto; }
+
+  /* TODAY TASKS */
+  .today-section { margin-bottom:24px; }
+  .section-title {
+    font-size:.85rem; font-weight:800; color:var(--text2); text-transform:uppercase;
+    letter-spacing:.6px; margin-bottom:10px;
+  }
+  .today-empty {
+    background:white; border-radius:12px; padding:20px 24px;
+    color:var(--text2); font-size:.9rem; box-shadow:var(--shadow);
+    display:flex; align-items:center; gap:10px;
+  }
+  .today-grid { display:flex; flex-direction:column; gap:10px; }
+  .today-card {
+    background:white; border-radius:12px; padding:16px 20px;
+    display:flex; align-items:center; gap:16px; box-shadow:var(--shadow);
+    border-left:4px solid var(--brand);
+  }
+  .today-card.overdue { border-left-color: var(--red); }
+  .today-icon { font-size:1.6rem; flex-shrink:0; }
+  .today-info { flex:1; min-width:0; }
+  .today-name { font-size:.95rem; font-weight:700; color:var(--text); }
+  .today-stage { font-size:.82rem; color:var(--text2); margin-top:2px; }
+  .today-sent { font-size:.75rem; color:var(--green); font-weight:600; }
+  .today-actions { display:flex; gap:8px; flex-shrink:0; }
+  .msg-btn {
+    padding:7px 14px; background:var(--brand-light); color:var(--brand);
+    border:1.5px solid #c7d2fe; border-radius:8px; font-size:.8rem;
+    font-weight:600; cursor:pointer; transition:all .15s;
+  }
+  .msg-btn:hover { background:var(--brand); color:white; border-color:var(--brand); }
+  .sent-btn {
+    padding:7px 14px; background:var(--green-light); color:#047857;
+    border:1.5px solid #6ee7b7; border-radius:8px; font-size:.8rem;
+    font-weight:600; cursor:pointer; transition:all .15s;
+  }
+  .sent-btn.done { opacity:.5; cursor:default; }
+  .sent-btn:not(.done):hover { background:var(--green); color:white; border-color:var(--green); }
+
+  /* CUSTOMER LIST */
+  .customers-grid { display:flex; flex-direction:column; gap:14px; }
+  .cust-card {
+    background:white; border-radius:14px; padding:20px 24px;
+    box-shadow:var(--shadow); cursor:pointer; transition:box-shadow .15s;
+  }
+  .cust-card:hover { box-shadow:0 4px 16px rgba(99,102,241,.12); }
+  .cust-top { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+  .cust-avatar {
+    width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,#6366f1,#a855f7);
+    display:flex; align-items:center; justify-content:center;
+    color:white; font-size:.85rem; font-weight:800; flex-shrink:0;
+  }
+  .cust-name { font-size:1rem; font-weight:700; color:var(--text); }
+  .cust-meta { font-size:.78rem; color:var(--text2); margin-top:2px; }
+  .cust-dday {
+    margin-left:auto; font-size:.8rem; font-weight:700; padding:4px 12px;
+    border-radius:999px; flex-shrink:0;
+  }
+  .cust-dday.pre  { background:var(--orange-light); color:#92400e; }
+  .cust-dday.post { background:var(--brand-light); color:var(--brand); }
+  .cust-dday.done { background:var(--green-light); color:#047857; }
+  .cust-dday.today-badge { background:var(--red-light); color:#991b1b; }
+
+  /* TIMELINE */
+  .timeline { position:relative; padding-top:24px; }
+  .timeline-track {
+    position:absolute; top:12px; left:0; right:0; height:3px;
+    background:var(--border); border-radius:3px;
+  }
+  .timeline-fill {
+    height:100%; background:linear-gradient(90deg,var(--green),var(--brand));
+    border-radius:3px; transition:width .4s;
+  }
+  .timeline-dots {
+    display:flex; justify-content:space-between; position:relative;
+  }
+  .t-dot-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .t-dot {
+    width:22px; height:22px; border-radius:50%; border:2.5px solid var(--border);
+    background:white; display:flex; align-items:center; justify-content:center;
+    font-size:.7rem; cursor:pointer; transition:all .15s; position:relative;
+    z-index:1;
+  }
+  .t-dot.done  { background:var(--green); border-color:var(--green); color:white; }
+  .t-dot.sent  { background:var(--brand); border-color:var(--brand); color:white; }
+  .t-dot.today { background:var(--orange); border-color:var(--orange); color:white;
+    box-shadow:0 0 0 4px rgba(245,158,11,.2); }
+  .t-dot.future{ background:white; border-color:var(--border); color:var(--text2); }
+  .t-label { font-size:.62rem; color:var(--text2); text-align:center; max-width:52px; line-height:1.3; }
+  .t-label.active { color:var(--brand); font-weight:700; }
+  .t-dot:hover:not(.done) { border-color:var(--brand); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align:center; padding:60px 20px; color:var(--text2);
+  }
+  .empty-state .ei { font-size:3.5rem; margin-bottom:12px; }
+  .empty-state p { font-size:.95rem; }
+
+  /* MODAL */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.45); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center; z-index:200; padding:16px;
+    display:none;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal {
+    background:white; border-radius:20px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.2);
+    max-height:90vh; overflow-y:auto;
+  }
+  .modal-header {
+    padding:22px 24px 0; display:flex; align-items:center; justify-content:space-between;
+  }
+  .modal-title { font-size:1.05rem; font-weight:800; color:var(--text); }
+  .modal-close {
+    width:30px; height:30px; border:none; background:var(--surface2); border-radius:50%;
+    cursor:pointer; font-size:1rem; color:var(--text2); display:flex;
+    align-items:center; justify-content:center; transition:background .15s;
+  }
+  .modal-close:hover { background:var(--border); }
+  .modal-body { padding:20px 24px 28px; }
+
+  /* ADD CUSTOMER MODAL */
+  #add-modal .modal { max-width:440px; }
+  .form-group { margin-bottom:14px; }
+  .form-label { font-size:.82rem; font-weight:700; color:var(--text); margin-bottom:5px; display:block; }
+  .form-input, .form-select {
+    width:100%; padding:10px 14px; border:1.5px solid var(--border);
+    border-radius:9px; font-size:.88rem; outline:none; font-family:inherit;
+    transition:border .2s; background:white; color:var(--text);
+  }
+  .form-input:focus, .form-select:focus { border-color:var(--brand); }
+  .lang-radio { display:flex; gap:8px; flex-wrap:wrap; }
+  .lang-radio label {
+    padding:6px 14px; border:1.5px solid var(--border); border-radius:999px;
+    font-size:.8rem; font-weight:600; cursor:pointer; color:var(--text2); transition:all .15s;
+  }
+  .lang-radio input { display:none; }
+  .lang-radio input:checked + span { background:var(--brand); border-color:var(--brand); color:white; }
+  .lang-opt {
+    padding:6px 14px; border:1.5px solid var(--border); border-radius:999px;
+    font-size:.8rem; font-weight:600; cursor:pointer; color:var(--text2); transition:all .15s;
+    background:white;
+  }
+  .lang-opt.active { background:var(--brand); border-color:var(--brand); color:white; }
+  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+  .btn-cancel {
+    padding:9px 20px; background:var(--surface2); border:none; border-radius:9px;
+    font-size:.88rem; cursor:pointer; color:var(--text2);
+  }
+  .btn-primary {
+    padding:9px 22px; background:var(--brand); border:none; border-radius:9px;
+    font-size:.88rem; font-weight:700; cursor:pointer; color:white;
+  }
+  .btn-primary:hover { background:var(--brand-dark); }
+
+  /* MESSAGE MODAL */
+  #msg-modal .modal { max-width:520px; }
+  .msg-stage-header {
+    background:var(--brand-light); border-radius:10px; padding:14px 16px;
+    margin-bottom:16px; display:flex; align-items:center; gap:10px;
+  }
+  .msg-stage-icon { font-size:1.4rem; }
+  .msg-stage-label { font-size:.88rem; font-weight:700; color:var(--brand); }
+  .msg-platform { display:flex; gap:8px; margin-bottom:12px; }
+  .platform-btn {
+    padding:5px 12px; border:1.5px solid var(--border); border-radius:7px;
+    font-size:.78rem; font-weight:600; cursor:pointer; background:white;
+    color:var(--text2); transition:all .15s;
+  }
+  .platform-btn.active { background:var(--brand); border-color:var(--brand); color:white; }
+  .msg-text-wrap {
+    background:var(--surface2); border-radius:10px; padding:14px 16px;
+    font-size:.86rem; line-height:1.75; color:var(--text); white-space:pre-wrap;
+    min-height:120px; max-height:240px; overflow-y:auto; border:1.5px solid var(--border);
+    margin-bottom:12px; position:relative;
+  }
+  .copy-strip { display:flex; gap:8px; align-items:center; }
+  .copy-btn {
+    padding:9px 20px; background:var(--brand); color:white; border:none;
+    border-radius:9px; font-size:.85rem; font-weight:700; cursor:pointer;
+    flex:1; transition:background .15s;
+  }
+  .copy-btn:hover { background:var(--brand-dark); }
+  .kakao-btn {
+    padding:9px 16px; background:#FEE500; color:#3A1D1D; border:none;
+    border-radius:9px; font-size:.82rem; font-weight:700; cursor:pointer;
+    transition:opacity .15s;
+  }
+  .kakao-btn:hover { opacity:.85; }
+  .msg-lang-tabs { display:flex; gap:6px; margin-bottom:10px; }
+  .msg-lang-tab {
+    padding:4px 11px; border:1.5px solid var(--border); border-radius:999px;
+    font-size:.74rem; font-weight:600; cursor:pointer; background:white;
+    color:var(--text2); transition:all .15s;
+  }
+  .msg-lang-tab.active { background:var(--brand); border-color:var(--brand); color:white; }
+  .copy-feedback {
+    font-size:.78rem; color:var(--green); font-weight:600; display:none;
+  }
+  .copy-feedback.show { display:inline; }
+
+  @media(max-width:600px){
+    .main { padding:14px 12px; }
+    .topbar { padding:0 14px; }
+    .t-label { display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a class="back-btn" href="admin.html">← 대시보드</a>
+    <span class="topbar-title">📬 온보딩 시퀀스</span>
+  </div>
+  <div class="topbar-right">
+    <button class="add-btn" onclick="openAddModal()">+ 고객 추가</button>
+  </div>
+</div>
+
+<div class="main">
+  <!-- TODAY -->
+  <div class="today-section">
+    <div class="section-title">📋 오늘 보낼 메시지</div>
+    <div id="today-container"></div>
+  </div>
+
+  <!-- ALL CUSTOMERS -->
+  <div class="section-title">👥 전체 고객 (<span id="cust-count">0</span>명)</div>
+  <div class="customers-grid" id="customers-grid"></div>
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <div class="ei">📭</div>
+    <p>아직 등록된 고객이 없습니다.<br>상단 <b>+ 고객 추가</b> 버튼으로 시작하세요.</p>
+  </div>
+</div>
+
+<!-- ADD CUSTOMER MODAL -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">고객 온보딩 등록</span>
+      <button class="modal-close" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">고객 이름</label>
+        <input class="form-input" id="f-name" placeholder="예: Zhang Wei">
+      </div>
+      <div class="form-group">
+        <label class="form-label">연락처 (카카오·WeChat·LINE·이메일)</label>
+        <input class="form-input" id="f-contact" placeholder="예: @zhangwei99">
+      </div>
+      <div class="form-group">
+        <label class="form-label">비자 종류</label>
+        <input class="form-input" id="f-visa" placeholder="예: D-2, E-7, F-2">
+      </div>
+      <div class="form-group">
+        <label class="form-label">입국일 (한국 도착 예정일)</label>
+        <input class="form-input" id="f-arrival" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">소통 언어</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="f-lang-group">
+          <button class="lang-opt active" data-lang="ko" onclick="selectLangOpt(this)">🇰🇷 한국어</button>
+          <button class="lang-opt" data-lang="en" onclick="selectLangOpt(this)">🇺🇸 English</button>
+          <button class="lang-opt" data-lang="zh" onclick="selectLangOpt(this)">🇨🇳 中文</button>
+          <button class="lang-opt" data-lang="ja" onclick="selectLangOpt(this)">🇯🇵 日本語</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeAddModal()">취소</button>
+        <button class="btn-primary" onclick="addCustomer()">등록하기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MESSAGE MODAL -->
+<div class="modal-overlay" id="msg-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="msg-modal-title">메시지 템플릿</span>
+      <button class="modal-close" onclick="closeMsgModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="msg-stage-header">
+        <span class="msg-stage-icon" id="msg-stage-icon">📦</span>
+        <span class="msg-stage-label" id="msg-stage-label"></span>
+      </div>
+      <div class="msg-lang-tabs" id="msg-lang-tabs"></div>
+      <div class="msg-text-wrap" id="msg-text-wrap"></div>
+      <div class="copy-strip">
+        <button class="copy-btn" onclick="copyMsg()">📋 복사하기</button>
+        <button class="kakao-btn" onclick="openKakao()">💬 카카오</button>
+        <span class="copy-feedback" id="copy-feedback">✅ 복사됨!</span>
+      </div>
+      <div style="margin-top:14px;">
+        <button class="btn-primary" style="width:100%;" onclick="markSent()">✅ 전송 완료 처리</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STAGES ────────────────────────────────────────────────────────────────
+const STAGES = [
+  { day:-14, key:'s1', icon:'📦', label:{ko:'D-14 준비',en:'D-14 Prep',zh:'D-14准备',ja:'D-14準備'} },
+  { day:-7,  key:'s2', icon:'✈️', label:{ko:'D-7 최종확인',en:'D-7 Final',zh:'D-7确认',ja:'D-7確認'} },
+  { day:0,   key:'s3', icon:'🎉', label:{ko:'입국 당일',en:'Arrival',zh:'入境当天',ja:'入国当日'} },
+  { day:3,   key:'s4', icon:'🏠', label:{ko:'D+3 정착',en:'D+3 Settle',zh:'D+3定居',ja:'D+3定住'} },
+  { day:7,   key:'s5', icon:'🏦', label:{ko:'D+7 은행',en:'D+7 Bank',zh:'D+7银行',ja:'D+7銀行'} },
+  { day:14,  key:'s6', icon:'🏥', label:{ko:'D+14 보험',en:'D+14 Ins.',zh:'D+14保险',ja:'D+14保険'} },
+  { day:30,  key:'s7', icon:'📊', label:{ko:'D+30 체크',en:'D+30 Check',zh:'D+30检查',ja:'D+30確認'} },
+  { day:60,  key:'s8', icon:'🛂', label:{ko:'D+60 비자',en:'D+60 Visa',zh:'D+60签证',ja:'D+60ビザ'} },
+  { day:90,  key:'s9', icon:'⭐', label:{ko:'D+90 리뷰',en:'D+90 Review',zh:'D+90评价',ja:'D+90評価'} },
+];
+
+// ── MESSAGE TEMPLATES ─────────────────────────────────────────────────────
+const MSG = {
+  s1: {
+    ko: `안녕하세요, {name}님! 정착 컨시어지입니다 😊
+한국 입국까지 딱 2주 남았어요! 미리 준비하시면 훨씬 편하게 정착하실 수 있어요.
+
+📋 지금 준비하실 것들:
+• 여권 유효기간 확인 (입국 후 6개월 이상 남아야 해요)
+• 비자 서류 재확인
+• 현금 환전 약 50~100만원 준비
+• 국제 로밍 또는 한국 유심 구매 계획
+
+궁금한 점 있으면 언제든지 연락 주세요! 💪`,
+    en: `Hello {name}! This is Korea Settlement Concierge 😊
+Only 2 weeks until your arrival in Korea! Let's prepare together.
+
+📋 Things to prepare now:
+• Check passport validity (must have 6+ months remaining after arrival)
+• Double-check all visa documents
+• Exchange currency (₩500,000~1,000,000 recommended)
+• Plan for a Korean SIM card upon arrival
+
+Feel free to ask us anything! 💪`,
+    zh: `您好，{name}！这里是韩国定居服务 😊
+距离入境还有2周！提前准备会让您的定居更顺畅。
+
+📋 现在需要准备的事项：
+• 确认护照有效期（入境后需剩余6个月以上）
+• 再次确认签证材料
+• 兑换韩元（建议50万~100万韩元）
+• 计划购买韩国SIM卡
+
+有任何问题随时联系我们！💪`,
+    ja: `こんにちは、{name}さん！定住コンシェルジュです 😊
+韓国入国まであと2週間！一緒に準備しましょう。
+
+📋 今から準備すること：
+• パスポートの有効期限確認（入国後6ヶ月以上必要）
+• ビザ書類の再確認
+• 現金両替（50万〜100万ウォン推奨）
+• 韓国のSIMカード購入を計画
+
+いつでも気軽にご連絡ください！💪`,
+  },
+  s2: {
+    ko: `{name}님, 입국이 딱 1주일 남았어요! ✈️
+최종 점검 함께 해요.
+
+📋 체크리스트:
+• 항공권·숙소 예약 최종 확인
+• 비자·여권 짐 챙기기
+• 저희 연락처 저장 (이 번호 꼭 저장해 두세요!)
+• 인천공항 → 숙소 이동 경로 확인
+
+도착하시면 바로 연락 주세요, 저희가 기다리고 있을게요! 🙌`,
+    en: `{name}, only 1 week until your arrival in Korea! ✈️
+Let's do a final check together.
+
+📋 Final checklist:
+• Reconfirm flight and accommodation bookings
+• Pack visa and passport documents carefully
+• Save our contact number (keep this one!)
+• Plan route from Incheon Airport to your place
+
+Contact us as soon as you land — we'll be waiting! 🙌`,
+    zh: `{name}，距离入境只剩1周了！✈️
+我们一起做最终确认吧。
+
+📋 最终核查清单：
+• 再次确认机票和住宿预订
+• 妥善整理签证和护照文件
+• 保存我们的联系方式（务必保存！）
+• 规划仁川机场到住处的路线
+
+到达后请立即联系我们，我们在等您！🙌`,
+    ja: `{name}さん、入国まであと1週間です！✈️
+最終確認を一緒にしましょう。
+
+📋 最終チェックリスト：
+• 航空券・宿泊先の最終確認
+• ビザ・パスポート書類の準備
+• 私たちの連絡先を保存（必ず保存を！）
+• 仁川空港からの移動ルート確認
+
+到着したらすぐにご連絡ください、お待ちしています！🙌`,
+  },
+  s3: {
+    ko: `{name}님, 한국에 오신 것을 진심으로 환영합니다! 🎉
+드디어 도착하셨네요. 긴 여정 수고하셨어요.
+
+오늘 먼저 하실 일:
+📱 공항 내 유심 구매 (SKT·KT·LG 매장)
+🏠 숙소 입실 및 안전 확인
+💤 충분한 휴식
+
+편히 쉬시고, 저희가 내일부터 정착을 도와드릴게요 😊
+도착 메시지 남겨주시면 확인하겠습니다!`,
+    en: `Welcome to Korea, {name}! 🎉
+You've finally arrived — the hard part is over!
+
+Things to do today:
+📱 Buy a SIM card at the airport (SKT/KT/LG stores)
+🏠 Check in to your accommodation safely
+💤 Get plenty of rest
+
+We'll help you settle in starting tomorrow 😊
+Send us a message when you're settled!`,
+    zh: `欢迎来到韩国，{name}！🎉
+您终于到达了，辛苦了！
+
+今天先做：
+📱 在机场购买SIM卡（SKT/KT/LG门店）
+🏠 安全入住住处
+💤 好好休息
+
+明天开始我们将全力协助您定居 😊
+安顿好后请给我们发个消息！`,
+    ja: `{name}さん、韓国へようこそ！🎉
+ついに到着しましたね。お疲れ様でした！
+
+今日やること：
+📱 空港でSIMカード購入（SKT/KT/LG店舗）
+🏠 宿泊先への安全なチェックイン
+💤 十分な休息
+
+明日から本格的なサポートを開始します 😊
+落ち着いたらメッセージをください！`,
+  },
+  s4: {
+    ko: `{name}님, 한국 도착 3일 됐네요! 잘 적응하고 계신가요? 🏠
+
+이번 주 할 일:
+🪪 외국인등록증 신청 예약 (입국 후 90일 이내 필수)
+📋 거주지 신고 (읍·면·동 주민센터)
+📱 유심 개통 완료 확인
+
+외국인등록증 신청은 저희가 모든 서류 준비부터 출입국에 동행까지 도와드립니다.
+진행하실 준비 되시면 알려주세요! 💪`,
+    en: `{name}, it's been 3 days since you arrived in Korea! How are you settling in? 🏠
+
+Things to do this week:
+🪪 Book alien registration appointment (required within 90 days of arrival)
+📋 Register your address at the local community center
+📱 Confirm your SIM card is working
+
+We'll handle all the documents and accompany you to the immigration office for alien registration!
+Let us know when you're ready 💪`,
+    zh: `{name}，已经来韩国3天了！适应得怎么样？🏠
+
+本周要做的事：
+🪪 预约外国人登录证申请（入境90天内必须完成）
+📋 到居住地附近居委会进行住址登记
+📱 确认SIM卡已正常开通
+
+外国人登录证申请，我们提供全程材料准备和陪同办理服务。
+准备好了请告诉我们！💪`,
+    ja: `{name}さん、入国から3日が経ちましたね！慣れてきましたか？🏠
+
+今週やること：
+🪪 外国人登録証の申請予約（入国後90日以内に必須）
+📋 居住地の住民登録（行政福祉センター）
+📱 SIMカードの開通確認
+
+外国人登録証申請は書類準備から入国管理局への同行まで全て代行します。
+準備ができたらお知らせください！💪`,
+  },
+  s5: {
+    ko: `{name}님, 한국 생활 1주일이 됐어요! 🏦
+이번 주는 생활 기반을 만드는 주예요.
+
+이번 주 할 일:
+🏦 은행 계좌 개설 (국민·신한·우리 추천)
+📦 필요한 생필품 구입
+🏥 건강보험 가입 안내 (다음 주 진행 예정)
+
+은행 계좌 개설은 저희 직원이 직접 동행해서 다국어로 도와드려요.
+언제 방문 가능하신지 알려주세요! 😊`,
+    en: `{name}, it's been 1 week in Korea! 🏦
+This week is about building your daily life foundation.
+
+This week's tasks:
+🏦 Open a bank account (KB/Shinhan/Woori recommended)
+📦 Purchase daily necessities
+🏥 Health insurance enrollment coming next week
+
+Our multilingual staff will accompany you to open a bank account.
+Let us know when you're available! 😊`,
+    zh: `{name}，已经在韩国生活1周了！🏦
+本周是建立日常生活基础的重要时期。
+
+本周待办：
+🏦 开设银行账户（推荐国民/新韩/友利银行）
+📦 购置日常必需品
+🏥 下周进行健康保险加入
+
+我们的多语言工作人员将陪同您前往银行开户。
+请告诉我们您什么时候方便！😊`,
+    ja: `{name}さん、韓国生活1週間が経ちました！🏦
+今週は日常生活の基盤を作る週です。
+
+今週のタスク：
+🏦 銀行口座開設（国民・新韓・ウリ銀行推奨）
+📦 日用品の購入
+🏥 来週健康保険加入を予定
+
+多言語スタッフが銀行口座開設に同行します。
+いつ都合がよいかお知らせください！😊`,
+  },
+  s6: {
+    ko: `{name}님, 드디어 건강보험 가입할 시간이에요! 🏥
+
+비자에 맞는 건강보험 플랜을 안내해 드릴게요:
+• D-2(유학생): 입국 후 6개월 후 직장가입자 의무 가입
+• E-7 등 직장 비자: 회사가 국민건강보험 자동 가입
+• 그 외: 지역가입자로 신청 가능
+
+저희가 비자 상황에 맞는 최적 플랜을 찾아드리고 모든 서류를 대신 처리해드려요.
+진행하실 준비 되셨나요? 📋`,
+    en: `{name}, it's time for health insurance enrollment! 🏥
+
+Insurance options by visa type:
+• D-2 (student): Mandatory enrollment after 6 months
+• E-7 and work visas: Company handles NHIS enrollment automatically
+• Others: Apply as a local subscriber
+
+We'll find the best plan for your visa situation and handle all the paperwork.
+Ready to get started? 📋`,
+    zh: `{name}，是时候加入健康保险了！🏥
+
+按签证类型的保险方案：
+• D-2（学生）：入境6个月后必须加入
+• E-7等工作签证：公司自动办理国民健康保险
+• 其他签证：可申请地区加入者
+
+我们将根据您的签证情况找到最佳方案并处理所有材料。
+准备好开始了吗？📋`,
+    ja: `{name}さん、健康保険加入の時期です！🏥
+
+ビザ別の保険プラン：
+• D-2（留学生）：入国後6ヶ月後に強制加入
+• E-7等の就労ビザ：会社が国民健康保険を自動加入
+• その他：地域加入者として申請可能
+
+ビザ状況に合った最適なプランを見つけて手続きを代行します。
+準備はよいですか？📋`,
+  },
+  s7: {
+    ko: `{name}님, 한국 생활 한 달이 됐어요! 🎊
+이제 어느 정도 적응이 됐으리라 믿어요.
+
+이번 달 체크포인트:
+✅ 외국인등록증 수령 확인
+✅ 건강보험 가입 완료 여부
+✅ 은행 계좌 정상 이용 중
+🔜 비자 만료일 확인 (60일 후 안내 예정)
+
+지금까지 진행 상황 어떤가요? 불편하신 점 있으면 말씀해 주세요!
+저희 매니저가 바로 도와드릴게요 😊`,
+    en: `{name}, you've been in Korea for 1 month! 🎊
+I hope you're feeling more comfortable now.
+
+This month's checkpoint:
+✅ Confirm alien registration card received
+✅ Confirm health insurance enrollment complete
+✅ Bank account in active use
+🔜 Visa expiry check (will follow up at D+60)
+
+How has everything been going? Let us know if anything needs attention!
+Your manager is ready to help 😊`,
+    zh: `{name}，来韩国已经整整一个月了！🎊
+希望您现在已经慢慢适应了。
+
+本月检查点：
+✅ 确认已领取外国人登录证
+✅ 确认健康保险已加入
+✅ 银行账户正常使用中
+🔜 签证到期日确认（60天后进行提醒）
+
+目前一切都还好吗？有任何不便之处请告诉我们！
+您的专属经理随时为您服务 😊`,
+    ja: `{name}さん、韓国に来て1ヶ月が経ちました！🎊
+少しずつ慣れてきていると思います。
+
+今月のチェックポイント：
+✅ 外国人登録証の受け取り確認
+✅ 健康保険加入完了の確認
+✅ 銀行口座の正常利用
+🔜 ビザ有効期限確認（D+60に予定）
+
+これまでいかがですか？何か困っていることがあればお気軽に！
+担当マネージャーがすぐにお手伝いします 😊`,
+  },
+  s8: {
+    ko: `{name}님, 입국 2개월이 됐어요! 🛂
+이제 슬슬 비자 관련 준비를 시작할 때예요.
+
+꼭 확인하세요:
+🗓️ 비자 만료일 확인
+📋 갱신 필요 여부 검토
+⏰ 비자 갱신은 만료 전 최소 1개월 전 신청 권장
+
+비자 갱신 관련해서 저희가 모든 서류 준비부터 신청까지 대행해 드려요.
+비자 만료일을 알려주시면 일정을 잡아드릴게요! 📅`,
+    en: `{name}, it's been 2 months since your arrival! 🛂
+Time to start thinking about your visa.
+
+Important to check:
+🗓️ Confirm your visa expiry date
+📋 Determine if renewal is needed
+⏰ Recommend applying for renewal at least 1 month before expiry
+
+We handle everything for visa renewal — documents, appointments, submission.
+Share your visa expiry date and we'll schedule it! 📅`,
+    zh: `{name}，入境已经2个月了！🛂
+现在是开始准备签证相关事宜的时候了。
+
+重要事项：
+🗓️ 确认签证有效期
+📋 确认是否需要续签
+⏰ 建议在签证到期前至少1个月申请续签
+
+签证续签所有材料准备到提交，我们全程代办。
+请告诉我们您签证的到期日期，我们来安排日程！📅`,
+    ja: `{name}さん、入国から2ヶ月が経ちました！🛂
+そろそろビザの準備を始める時期です。
+
+重要な確認事項：
+🗓️ ビザの有効期限を確認
+📋 更新が必要かどうかを確認
+⏰ 有効期限の少なくとも1ヶ月前に更新申請することを推奨
+
+ビザ更新は書類準備から申請まで全て代行します。
+ビザの有効期限を教えていただければスケジュールを組みます！📅`,
+  },
+  s9: {
+    ko: `{name}님, 한국 정착 3개월 됐어요! ⭐
+정말 많이 적응하셨죠? 함께해서 정말 기뻤어요!
+
+마지막으로 부탁드리고 싶은 게 있어요:
+⭐ 서비스 후기 남겨주세요 (1분이면 충분해요!)
+💬 저희 서비스에서 좋았던 점, 아쉬웠던 점 모두 알려주세요
+📣 주변에 한국 정착이 필요한 분께 추천도 부탁드려요
+
+후기 링크: ${location.origin}/review.html?id={id}
+
+앞으로도 무엇이든 필요하시면 언제든지 연락 주세요! 🙏`,
+    en: `{name}, it's been 3 months since you arrived in Korea! ⭐
+You've come so far — it's been a pleasure supporting you!
+
+One last request:
+⭐ Please leave us a review (just 1 minute!)
+💬 Tell us what worked well and what could be better
+📣 Recommend us to anyone else settling in Korea
+
+Review link: ${location.origin}/review.html?id={id}
+
+Remember, we're always here if you need anything! 🙏`,
+    zh: `{name}，来韩国已经整整3个月了！⭐
+您已经大有进步，能够陪伴您是我们的荣幸！
+
+最后一个小小的请求：
+⭐ 请为我们留下评价（只需1分钟！）
+💬 告诉我们哪些地方做得好，哪些地方可以改进
+📣 如有需要在韩定居的朋友，欢迎推荐我们
+
+评价链接：${location.origin}/review.html?id={id}
+
+以后有任何需要请随时联系我们！🙏`,
+    ja: `{name}さん、韓国に来て3ヶ月が経ちました！⭐
+こんなに成長されて、一緒にいられて光栄でした！
+
+最後にお願いがあります：
+⭐ レビューを書いていただけますか？（1分で大丈夫です！）
+💬 よかった点、改善できる点、何でも教えてください
+📣 韓国定住が必要なお知り合いがいればぜひご紹介を
+
+レビューリンク：${location.origin}/review.html?id={id}
+
+これからも何かあればいつでもご連絡ください！🙏`,
+  },
+};
+
+// ── DATA ──────────────────────────────────────────────────────────────────
+let customers = [];
+let activeLang = 'ko';
+let msgCtx = { custId: null, stageKey: null };
+
+function load() {
+  try { customers = JSON.parse(localStorage.getItem('concierge_onboarding') || '[]'); }
+  catch { customers = []; }
+}
+function save() {
+  localStorage.setItem('concierge_onboarding', JSON.stringify(customers));
+}
+
+// ── DATE HELPERS ──────────────────────────────────────────────────────────
+function daysFromArrival(arrivalDate) {
+  const arrival = new Date(arrivalDate);
+  arrival.setHours(0,0,0,0);
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  return Math.round((today - arrival) / 86400000);
+}
+
+function getCurrentStage(d) {
+  // Find the stage that best matches current D-day
+  let best = null;
+  for (const s of STAGES) {
+    if (d >= s.day) best = s;
+    else break;
+  }
+  return best;
+}
+
+function getNextStage(d) {
+  for (const s of STAGES) {
+    if (d < s.day) return s;
+  }
+  return null;
+}
+
+function isDueToday(d, stage) {
+  // Due if within 1 day of the stage target
+  return Math.abs(d - stage.day) <= 1;
+}
+
+function progressPercent(d) {
+  const max = 90, min = -14;
+  return Math.min(100, Math.max(0, Math.round((d - min) / (max - min) * 100)));
+}
+
+// ── RENDER TODAY ──────────────────────────────────────────────────────────
+function renderToday() {
+  const container = document.getElementById('today-container');
+  const tasks = [];
+  for (const c of customers) {
+    const d = daysFromArrival(c.arrivalDate);
+    for (const s of STAGES) {
+      if (isDueToday(d, s) && !(c.sentStages || []).includes(s.key)) {
+        tasks.push({ cust: c, stage: s, d });
+      }
+    }
+  }
+  if (tasks.length === 0) {
+    container.innerHTML = `<div class="today-empty">✅ 오늘 보낼 메시지가 없습니다. 모든 일정이 완료됐거나 예정된 메시지가 없어요.</div>`;
+    return;
+  }
+  container.innerHTML = `<div class="today-grid">${tasks.map(t => {
+    const overdue = t.d > t.stage.day + 1;
+    return `<div class="today-card${overdue?' overdue':''}">
+      <span class="today-icon">${t.stage.icon}</span>
+      <div class="today-info">
+        <div class="today-name">${esc(t.cust.name)}</div>
+        <div class="today-stage">${t.stage.label[t.cust.lang||'ko']} · ${t.cust.visa||'-'} · ${getLangFlag(t.cust.lang)}</div>
+      </div>
+      <div class="today-actions">
+        <button class="msg-btn" onclick="openMsgModal('${t.cust.id}','${t.stage.key}')">메시지 보기</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ── RENDER CUSTOMERS ──────────────────────────────────────────────────────
+function renderCustomers() {
+  const grid = document.getElementById('customers-grid');
+  const empty = document.getElementById('empty-state');
+  document.getElementById('cust-count').textContent = customers.length;
+  if (customers.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  // Sort by arrival date descending
+  const sorted = [...customers].sort((a,b) => new Date(b.arrivalDate) - new Date(a.arrivalDate));
+  grid.innerHTML = sorted.map(c => {
+    const d = daysFromArrival(c.arrivalDate);
+    const sent = c.sentStages || [];
+    const pct = progressPercent(d);
+    const dLabel = d === 0 ? '오늘 입국' : d < 0 ? `D${d}` : `D+${d}`;
+    const dClass = d < 0 ? 'pre' : d <= 90 ? 'post' : 'done';
+    const initials = (c.name||'?').slice(0,2).toUpperCase();
+    const dots = STAGES.map(s => {
+      let cls = 'future';
+      if (sent.includes(s.key)) cls = 'sent';
+      else if (d > s.day + 1) cls = 'done';
+      else if (isDueToday(d, s)) cls = 'today';
+      return `<div class="t-dot-wrap">
+        <div class="t-dot ${cls}" onclick="event.stopPropagation();openMsgModal('${c.id}','${s.key}')"
+          title="${s.label[c.lang||'ko']}">${cls==='sent'?'✓':cls==='done'?'·':s.icon}</div>
+        <div class="t-label${cls==='today'?' active':''}">${s.label[c.lang||'ko']}</div>
+      </div>`;
+    }).join('');
+    return `<div class="cust-card">
+      <div class="cust-top">
+        <div class="cust-avatar">${initials}</div>
+        <div>
+          <div class="cust-name">${esc(c.name)}</div>
+          <div class="cust-meta">${esc(c.contact||'-')} · ${esc(c.visa||'-')} · ${getLangFlag(c.lang)} · ${new Date(c.arrivalDate).toLocaleDateString('ko-KR')}</div>
+        </div>
+        <span class="cust-dday ${dClass}">${dLabel}</span>
+      </div>
+      <div class="timeline">
+        <div class="timeline-track"><div class="timeline-fill" style="width:${pct}%"></div></div>
+        <div class="timeline-dots">${dots}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── ADD CUSTOMER ──────────────────────────────────────────────────────────
+let selectedLang = 'ko';
+function selectLangOpt(el) {
+  document.querySelectorAll('#f-lang-group .lang-opt').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  selectedLang = el.dataset.lang;
+}
+
+function openAddModal() {
+  document.getElementById('add-modal').classList.add('open');
+  document.getElementById('f-arrival').value = new Date().toISOString().slice(0,10);
+}
+function closeAddModal() { document.getElementById('add-modal').classList.remove('open'); }
+
+function addCustomer() {
+  const name    = document.getElementById('f-name').value.trim();
+  const contact = document.getElementById('f-contact').value.trim();
+  const visa    = document.getElementById('f-visa').value.trim();
+  const arrival = document.getElementById('f-arrival').value;
+  if (!name || !arrival) { alert('이름과 입국일은 필수입니다.'); return; }
+  customers.push({ id: Date.now(), name, contact, visa, arrivalDate: arrival, lang: selectedLang, sentStages: [], createdAt: new Date().toISOString() });
+  save(); closeAddModal(); render();
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-contact').value = '';
+  document.getElementById('f-visa').value = '';
+}
+
+// ── MESSAGE MODAL ─────────────────────────────────────────────────────────
+let msgLang = 'ko';
+
+function openMsgModal(custId, stageKey) {
+  const cust = customers.find(c => String(c.id) === String(custId));
+  if (!cust) return;
+  const stage = STAGES.find(s => s.key === stageKey);
+  if (!stage) return;
+  msgCtx = { custId, stageKey };
+  msgLang = cust.lang || 'ko';
+
+  document.getElementById('msg-modal-title').textContent = `${cust.name} — ${stage.label[msgLang]}`;
+  document.getElementById('msg-stage-icon').textContent = stage.icon;
+  document.getElementById('msg-stage-label').textContent = stage.label[msgLang];
+
+  // Lang tabs
+  const tabs = document.getElementById('msg-lang-tabs');
+  tabs.innerHTML = [['ko','🇰🇷'],['en','🇺🇸'],['zh','🇨🇳'],['ja','🇯🇵']].map(([l,f]) =>
+    `<button class="msg-lang-tab${l===msgLang?' active':''}" onclick="setMsgLang('${l}',this)">${f} ${l.toUpperCase()}</button>`
+  ).join('');
+
+  renderMsgText(cust, stageKey);
+  document.getElementById('msg-modal').classList.add('open');
+  document.getElementById('copy-feedback').classList.remove('show');
+}
+
+function setMsgLang(l, btn) {
+  msgLang = l;
+  document.querySelectorAll('.msg-lang-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const cust = customers.find(c => String(c.id) === String(msgCtx.custId));
+  if (cust) renderMsgText(cust, msgCtx.stageKey);
+}
+
+function renderMsgText(cust, stageKey) {
+  const template = (MSG[stageKey] || {})[msgLang] || '템플릿 없음';
+  const text = template.replace(/\{name\}/g, cust.name).replace(/\{id\}/g, cust.id);
+  document.getElementById('msg-text-wrap').textContent = text;
+}
+
+function closeMsgModal() { document.getElementById('msg-modal').classList.remove('open'); }
+
+function copyMsg() {
+  const text = document.getElementById('msg-text-wrap').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const fb = document.getElementById('copy-feedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2000);
+  });
+}
+
+function openKakao() {
+  const text = encodeURIComponent(document.getElementById('msg-text-wrap').textContent);
+  window.open(`https://open.kakao.com/o/`, '_blank');
+}
+
+function markSent() {
+  const cust = customers.find(c => String(c.id) === String(msgCtx.custId));
+  if (!cust) return;
+  if (!cust.sentStages) cust.sentStages = [];
+  if (!cust.sentStages.includes(msgCtx.stageKey)) cust.sentStages.push(msgCtx.stageKey);
+  save(); closeMsgModal(); render();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function getLangFlag(l) {
+  return {ko:'🇰🇷',en:'🇺🇸',zh:'🇨🇳',ja:'🇯🇵'}[l] || '🌐';
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function render() { renderToday(); renderCustomers(); }
+
+// Close modals on overlay click
+document.getElementById('add-modal').addEventListener('click', e => { if(e.target.id==='add-modal') closeAddModal(); });
+document.getElementById('msg-modal').addEventListener('click', e => { if(e.target.id==='msg-modal') closeMsgModal(); });
+
+// Init
+load(); render();
+
+// Demo: add sample customer if empty
+if (customers.length === 0) {
+  const today = new Date();
+  const arrival7 = new Date(today); arrival7.setDate(today.getDate() + 7);
+  const arrivalMinus3 = new Date(today); arrivalMinus3.setDate(today.getDate() - 3);
+  customers.push({ id:1001, name:'Zhang Wei', contact:'@zhangwei', visa:'D-2', arrivalDate: arrival7.toISOString().slice(0,10), lang:'zh', sentStages:[], createdAt:new Date().toISOString() });
+  customers.push({ id:1002, name:'Tanaka Yuki', contact:'@yuki_t', visa:'E-7', arrivalDate: arrivalMinus3.toISOString().slice(0,10), lang:'ja', sentStages:['s1','s2'], createdAt:new Date().toISOString() });
+  save(); render();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>정착 컨시어지 — 관리자 대시보드</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+  /* LOGIN */
+  #login-screen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  }
+  .login-box {
+    background: white; border-radius: 16px; padding: 48px 40px;
+    width: 360px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .login-logo { font-size: 32px; margin-bottom: 8px; }
+  .login-title { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+  .login-sub { font-size: 13px; color: #888; margin-bottom: 32px; }
+  .login-box input {
+    width: 100%; padding: 12px 16px; border: 1.5px solid #e0e0e0;
+    border-radius: 8px; font-size: 15px; margin-bottom: 12px; outline: none;
+    transition: border-color .2s;
+  }
+  .login-box input:focus { border-color: #4361ee; }
+  .login-btn {
+    width: 100%; padding: 13px; background: #4361ee; color: white;
+    border: none; border-radius: 8px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: background .2s;
+  }
+  .login-btn:hover { background: #3451d1; }
+  .login-error { color: #e63946; font-size: 13px; margin-top: 8px; display: none; }
+
+  /* DASHBOARD */
+  #dashboard { display: none; }
+  .topbar {
+    background: white; padding: 0 32px; height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #e8e8e8; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar-logo { font-size: 22px; font-weight: 800; color: #1a1a2e; }
+  .topbar-badge {
+    background: #4361ee; color: white; font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 20px;
+  }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .refresh-btn {
+    padding: 7px 16px; background: #f0f2f5; border: none; border-radius: 6px;
+    font-size: 13px; cursor: pointer; color: #555; transition: background .15s;
+  }
+  .refresh-btn:hover { background: #e0e4f0; }
+  .logout-btn {
+    padding: 7px 16px; background: #fff0f0; border: none; border-radius: 6px;
+    font-size: 13px; cursor: pointer; color: #e63946; transition: background .15s;
+  }
+  .logout-btn:hover { background: #ffe0e0; }
+
+  .main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* STATS */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px;
+  }
+  .stat-card {
+    background: white; border-radius: 12px; padding: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .stat-label { font-size: 13px; color: #888; margin-bottom: 8px; font-weight: 500; }
+  .stat-value { font-size: 36px; font-weight: 800; color: #1a1a2e; }
+  .stat-card.new .stat-value { color: #4361ee; }
+  .stat-card.consulting .stat-value { color: #f77f00; }
+  .stat-card.done .stat-value { color: #2dc653; }
+
+  /* FILTERS */
+  .filter-bar {
+    background: white; border-radius: 12px; padding: 16px 20px;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); flex-wrap: wrap;
+  }
+  .filter-label { font-size: 13px; color: #888; font-weight: 600; white-space: nowrap; }
+  .filter-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer;
+    border: 1.5px solid #e0e0e0; background: white; color: #555; transition: all .15s;
+    font-weight: 500;
+  }
+  .chip.active { background: #4361ee; border-color: #4361ee; color: white; }
+  .chip:hover:not(.active) { border-color: #4361ee; color: #4361ee; }
+  .filter-divider { width: 1px; height: 24px; background: #e0e0e0; }
+  .search-input {
+    margin-left: auto; padding: 7px 14px; border: 1.5px solid #e0e0e0;
+    border-radius: 8px; font-size: 13px; outline: none; min-width: 200px; transition: border-color .2s;
+  }
+  .search-input:focus { border-color: #4361ee; }
+
+  /* TABLE */
+  .table-wrap {
+    background: white; border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow: hidden;
+  }
+  .table-header {
+    padding: 16px 24px; border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .table-title { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+  .row-count { font-size: 13px; color: #888; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: #f8f9fc; padding: 11px 16px; text-align: left;
+    font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase;
+    letter-spacing: .5px; border-bottom: 1px solid #f0f0f0;
+  }
+  tbody tr { border-bottom: 1px solid #f8f8f8; transition: background .1s; }
+  tbody tr:hover { background: #f8f9fc; }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 13px 16px; font-size: 14px; vertical-align: middle; }
+  .td-name { font-weight: 600; color: #1a1a2e; }
+  .td-contact { color: #555; font-size: 13px; }
+  .td-visa {
+    background: #eef2ff; color: #4361ee; font-size: 12px; font-weight: 600;
+    padding: 3px 10px; border-radius: 12px; display: inline-block;
+  }
+  .td-need { color: #444; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .td-lang { font-size: 18px; }
+  .td-date { color: #aaa; font-size: 12px; white-space: nowrap; }
+
+  /* STATUS BADGE */
+  .status-select {
+    padding: 5px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+    border: none; cursor: pointer; outline: none; appearance: none;
+    -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23999' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; padding-right: 24px;
+    transition: all .15s;
+  }
+  .status-new    { background: #eef2ff; color: #4361ee; }
+  .status-consulting { background: #fff4e0; color: #f77f00; }
+  .status-done   { background: #e6f9ee; color: #2dc653; }
+
+  /* NOTES */
+  .notes-btn {
+    padding: 5px 12px; background: #f0f2f5; border: none; border-radius: 6px;
+    font-size: 12px; cursor: pointer; color: #555; transition: background .15s;
+  }
+  .notes-btn:hover { background: #e0e4f0; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: #aaa;
+  }
+  .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 15px; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; display: none;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: 16px; padding: 32px;
+    width: 480px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,.2);
+  }
+  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .modal-sub { font-size: 13px; color: #888; margin-bottom: 20px; }
+  .modal textarea {
+    width: 100%; padding: 12px; border: 1.5px solid #e0e0e0;
+    border-radius: 8px; font-size: 14px; resize: vertical; min-height: 100px;
+    outline: none; font-family: inherit; transition: border-color .2s;
+  }
+  .modal textarea:focus { border-color: #4361ee; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+  .btn-cancel {
+    padding: 9px 20px; background: #f0f2f5; border: none; border-radius: 8px;
+    font-size: 14px; cursor: pointer; color: #555;
+  }
+  .btn-save {
+    padding: 9px 20px; background: #4361ee; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer; color: white;
+  }
+  .btn-save:hover { background: #3451d1; }
+
+  /* LANG FLAG */
+  .lang-map { display: inline-block; }
+
+  /* NAV LINKS */
+  .nav-link {
+    padding: 6px 13px; border: 1.5px solid #e0e0e0; border-radius: 7px;
+    font-size: 12px; font-weight: 600; color: #555; text-decoration: none;
+    background: white; transition: all .15s; cursor: pointer;
+  }
+  .nav-link:hover { border-color: #4361ee; color: #4361ee; background: #eef2ff; }
+
+  /* FOLLOW-UP ALERTS */
+  .followup-section { margin-bottom: 22px; }
+  .followup-title {
+    font-size: 12px; font-weight: 800; color: #888; text-transform: uppercase;
+    letter-spacing: .5px; margin-bottom: 10px;
+  }
+  .followup-grid { display: flex; flex-direction: column; gap: 8px; }
+  .followup-card {
+    background: white; border-radius: 10px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); border-left: 4px solid #f77f00;
+  }
+  .followup-card.urgent { border-left-color: #e63946; }
+  .followup-card.low    { border-left-color: #2dc653; }
+  .fu-icon { font-size: 1.3rem; flex-shrink: 0; }
+  .fu-name { font-size: .88rem; font-weight: 700; color: #1a1a2e; }
+  .fu-note { font-size: .78rem; color: #888; margin-top: 1px; }
+  .fu-date { margin-left: auto; font-size: .75rem; color: #f77f00; font-weight: 700; white-space: nowrap; }
+  .followup-card.urgent .fu-date { color: #e63946; }
+  .followup-card.low    .fu-date { color: #2dc653; }
+
+  /* CRM TAGS */
+  .tag-list { display: flex; gap: 4px; flex-wrap: wrap; max-width: 160px; }
+  .crm-tag {
+    padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    white-space: nowrap;
+  }
+  .crm-tag.visa    { background: #eef2ff; color: #4361ee; }
+  .crm-tag.urgent  { background: #fff0f0; color: #e63946; }
+  .crm-tag.warn    { background: #fff4e0; color: #f77f00; }
+  .crm-tag.ok      { background: #e6f9ee; color: #2dc653; }
+  .crm-tag.neutral { background: #f0f2f5; color: #555; }
+  .no-tags { font-size: 12px; color: #ccc; }
+
+  /* AI BUTTON */
+  .ai-btn {
+    padding: 4px 10px; background: linear-gradient(135deg,#6366f1,#a855f7);
+    color: white; border: none; border-radius: 6px; font-size: 11px;
+    font-weight: 700; cursor: pointer; transition: opacity .15s; white-space: nowrap;
+  }
+  .ai-btn:hover { opacity: .85; }
+  .ai-btn:disabled { opacity: .45; cursor: default; }
+
+  /* AI MODAL */
+  .ai-modal-wrap {
+    background: white; border-radius: 18px; padding: 28px 28px 24px;
+    width: 520px; max-width: 95vw; max-height: 80vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,.22);
+  }
+  .ai-modal-title { font-size: 16px; font-weight: 800; margin-bottom: 16px; color: #1a1a2e; }
+  .ai-section-label {
+    font-size: 11px; font-weight: 800; color: #888; text-transform: uppercase;
+    letter-spacing: .5px; margin: 14px 0 6px;
+  }
+  .ai-summary-box {
+    background: #f8fafc; border-radius: 9px; padding: 12px 14px;
+    font-size: .85rem; line-height: 1.7; color: #1a1a2e; border: 1.5px solid #e2e8f0;
+  }
+  .ai-tag-suggest { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ai-tag-toggle {
+    padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1.5px solid #e0e0e0; background: white; color: #555;
+    transition: all .15s;
+  }
+  .ai-tag-toggle.selected { background: #4361ee; border-color: #4361ee; color: white; }
+  .followup-inputs { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  .followup-inputs input {
+    padding: 8px 12px; border: 1.5px solid #e0e0e0; border-radius: 8px;
+    font-size: 13px; outline: none; flex: 1; min-width: 140px; transition: border .2s;
+  }
+  .followup-inputs input:focus { border-color: #4361ee; }
+  .ai-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .btn-ai-save {
+    padding: 9px 22px; background: #4361ee; border: none; border-radius: 9px;
+    font-size: 14px; font-weight: 700; cursor: pointer; color: white;
+  }
+  .btn-ai-save:hover { background: #3451d1; }
+  .ai-spinner {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2.5px solid #e0e4f0; border-top-color: #4361ee;
+    animation: aispin .7s linear infinite; display: none;
+  }
+  .ai-spinner.show { display: inline-block; }
+  @keyframes aispin { to { transform: rotate(360deg); } }
+  .urgency-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 700;
+  }
+  .urgency-high   { background: #fff0f0; color: #e63946; }
+  .urgency-medium { background: #fff4e0; color: #f77f00; }
+  .urgency-low    { background: #e6f9ee; color: #2dc653; }
+
+  @media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .main { padding: 16px; }
+    .topbar { padding: 0 16px; }
+    .filter-bar { flex-direction: column; align-items: flex-start; }
+    .search-input { margin-left: 0; width: 100%; }
+    td:nth-child(4), th:nth-child(4) { display: none; }
+    td:nth-child(6), th:nth-child(6) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🏢</div>
+    <div class="login-title">정착 컨시어지</div>
+    <div class="login-sub">관리자 전용 대시보드</div>
+    <input type="text" id="login-id" placeholder="아이디" autocomplete="username">
+    <input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password">
+    <button class="login-btn" onclick="doLogin()">로그인</button>
+    <div class="login-error" id="login-error">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">정착 컨시어지</span>
+      <span class="topbar-badge">ADMIN</span>
+    </div>
+    <div class="topbar-right">
+      <a class="nav-link" href="onboarding.html">📬 온보딩</a>
+      <a class="nav-link" href="review.html">⭐ 리뷰·FAQ</a>
+      <a class="nav-link" href="index.html">💬 챗봇</a>
+      <button class="refresh-btn" onclick="loadLeads()">↻ 새로고침</button>
+      <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- STATS -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">총 상담 문의</div>
+        <div class="stat-value" id="stat-total">0</div>
+      </div>
+      <div class="stat-card new">
+        <div class="stat-label">🔵 신규 (응답 대기)</div>
+        <div class="stat-value" id="stat-new">0</div>
+      </div>
+      <div class="stat-card consulting">
+        <div class="stat-label">🟠 상담 진행 중</div>
+        <div class="stat-value" id="stat-consulting">0</div>
+      </div>
+      <div class="stat-card done">
+        <div class="stat-label">🟢 완료</div>
+        <div class="stat-value" id="stat-done">0</div>
+      </div>
+    </div>
+
+    <!-- FOLLOW-UP ALERTS -->
+    <div class="followup-section" id="followup-section" style="display:none;">
+      <div class="followup-title">⏰ 팔로업 알림</div>
+      <div class="followup-grid" id="followup-grid"></div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filter-bar">
+      <span class="filter-label">상태</span>
+      <div class="filter-chips" id="status-chips">
+        <button class="chip active" data-status="all" onclick="setFilter('status','all',this)">전체</button>
+        <button class="chip" data-status="new" onclick="setFilter('status','new',this)">신규</button>
+        <button class="chip" data-status="consulting" onclick="setFilter('status','consulting',this)">상담중</button>
+        <button class="chip" data-status="done" onclick="setFilter('status','done',this)">완료</button>
+      </div>
+      <div class="filter-divider"></div>
+      <span class="filter-label">서비스</span>
+      <div class="filter-chips" id="need-chips">
+        <button class="chip active" data-need="all" onclick="setFilter('need','all',this)">전체</button>
+        <button class="chip" data-need="비자" onclick="setFilter('need','비자',this)">비자갱신</button>
+        <button class="chip" data-need="외국인등록" onclick="setFilter('need','외국인등록',this)">외국인등록</button>
+        <button class="chip" data-need="건강보험" onclick="setFilter('need','건강보험',this)">건강보험</button>
+        <button class="chip" data-need="은행" onclick="setFilter('need','은행',this)">은행계좌</button>
+        <button class="chip" data-need="주거" onclick="setFilter('need','주거',this)">주거지원</button>
+      </div>
+      <input class="search-input" id="search-input" type="text" placeholder="이름·연락처 검색..." oninput="renderTable()">
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">리드 목록</span>
+        <span class="row-count" id="row-count">0건</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>이름</th>
+            <th>연락처</th>
+            <th>비자</th>
+            <th>문의 내용</th>
+            <th>언어</th>
+            <th>접수일</th>
+            <th>상태</th>
+            <th>CRM 태그</th>
+            <th>메모</th>
+          </tr>
+        </thead>
+        <tbody id="leads-tbody"></tbody>
+      </table>
+      <div class="empty-state" id="empty-state" style="display:none;">
+        <div class="empty-icon">📭</div>
+        <p>아직 접수된 문의가 없습니다.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NOTES MODAL -->
+<div class="modal-overlay" id="notes-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-lead-name">메모</div>
+    <div class="modal-sub">이 고객에 대한 메모를 남겨주세요.</div>
+    <textarea id="modal-notes" placeholder="상담 내용, 다음 액션, 특이사항..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-save" onclick="saveNotes()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI ANALYSIS MODAL -->
+<div class="modal-overlay" id="ai-modal">
+  <div class="ai-modal-wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div class="ai-modal-title">🤖 AI CRM 분석</div>
+      <button onclick="closeAiModal()" style="border:none;background:#f0f2f5;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;">✕</button>
+    </div>
+    <div id="ai-loading" style="text-align:center;padding:32px 0;">
+      <div class="ai-spinner show" style="margin:0 auto 12px;display:block;"></div>
+      <div style="font-size:14px;color:#888;">Claude가 고객 데이터를 분석 중입니다…</div>
+    </div>
+    <div id="ai-result" style="display:none;">
+      <div class="ai-section-label">분석 요약</div>
+      <div class="ai-summary-box" id="ai-summary-text"></div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-top:14px;">
+        <div>
+          <div class="ai-section-label" style="margin-top:0;">긴급도</div>
+          <span id="ai-urgency-badge" class="urgency-badge urgency-medium">중간</span>
+        </div>
+        <div style="flex:1;">
+          <div class="ai-section-label" style="margin-top:0;">팔로업 권장일</div>
+          <div id="ai-followup-date" style="font-size:14px;font-weight:700;color:#1a1a2e;">-</div>
+        </div>
+      </div>
+      <div class="ai-section-label">팔로업 이유</div>
+      <div id="ai-followup-note" style="font-size:13px;color:#555;line-height:1.6;"></div>
+
+      <div class="ai-section-label">추천 태그 (클릭해서 선택/해제)</div>
+      <div class="ai-tag-suggest" id="ai-tag-suggest"></div>
+
+      <div class="ai-section-label">팔로업 날짜 수정 (선택)</div>
+      <div class="followup-inputs">
+        <input type="date" id="ai-followup-date-input">
+        <input type="text" id="ai-followup-note-input" placeholder="팔로업 메모 (선택)">
+      </div>
+    </div>
+    <div class="ai-modal-actions">
+      <button class="btn-cancel" onclick="closeAiModal()">취소</button>
+      <button class="btn-ai-save" id="ai-save-btn" onclick="saveAiResult()" disabled>분석 결과 저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── AUTH ───────────────────────────────────────────────────────────────────
+const ADMIN_ID = 'admin';
+const ADMIN_PW = 'concierge2024';
+let apiKey = localStorage.getItem('concierge_api_key') || '';
+
+function doLogin() {
+  const id = document.getElementById('login-id').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  if (id === ADMIN_ID && pw === ADMIN_PW) {
+    sessionStorage.setItem('admin_auth', '1');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    loadLeads();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+function doLogout() {
+  sessionStorage.removeItem('admin_auth');
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-id').value = '';
+  document.getElementById('login-pw').value = '';
+}
+if (sessionStorage.getItem('admin_auth')) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+}
+
+// ── DATA ───────────────────────────────────────────────────────────────────
+let allLeads = [];
+let filters = { status: 'all', need: 'all' };
+let editingLeadId = null;
+
+function loadLeads() {
+  try { allLeads = JSON.parse(localStorage.getItem('concierge_leads') || '[]'); }
+  catch { allLeads = []; }
+  updateStats();
+  renderFollowups();
+  renderTable();
+}
+function saveAllLeads() { localStorage.setItem('concierge_leads', JSON.stringify(allLeads)); }
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = allLeads.length;
+  document.getElementById('stat-new').textContent = allLeads.filter(l => l.status === 'new').length;
+  document.getElementById('stat-consulting').textContent = allLeads.filter(l => l.status === 'consulting').length;
+  document.getElementById('stat-done').textContent = allLeads.filter(l => l.status === 'done').length;
+}
+
+// ── FOLLOW-UP ALERTS ───────────────────────────────────────────────────────
+function renderFollowups() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = allLeads.filter(l => l.followUpDate && l.status !== 'done').map(l => {
+    const d = new Date(l.followUpDate); d.setHours(0,0,0,0);
+    const diff = Math.round((d - today) / 86400000);
+    return { lead: l, diff };
+  }).filter(x => x.diff <= 3).sort((a,b) => a.diff - b.diff);
+
+  const section = document.getElementById('followup-section');
+  const grid = document.getElementById('followup-grid');
+  if (due.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  grid.innerHTML = due.map(({ lead, diff }) => {
+    const cls = diff < 0 ? 'urgent' : diff === 0 ? '' : 'low';
+    const dateLabel = diff < 0 ? `${Math.abs(diff)}일 지남` : diff === 0 ? '오늘' : `${diff}일 후`;
+    return `<div class="followup-card ${cls}">
+      <span class="fu-icon">${diff < 0 ? '🚨' : diff === 0 ? '⏰' : '📅'}</span>
+      <div>
+        <div class="fu-name">${esc(lead.name || '-')}</div>
+        <div class="fu-note">${esc(lead.followUpNote || lead.need || '-')}</div>
+      </div>
+      <span class="fu-date">${dateLabel}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── FILTERS ────────────────────────────────────────────────────────────────
+function setFilter(type, value, el) {
+  filters[type] = value;
+  const group = type === 'status' ? 'status-chips' : 'need-chips';
+  document.querySelectorAll(`#${group} .chip`).forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+function getFiltered() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  return allLeads.filter(l => {
+    const statusOk = filters.status === 'all' || l.status === filters.status;
+    const needOk   = filters.need === 'all' || (l.need || '').includes(filters.need);
+    const searchOk = !q || (l.name||'').toLowerCase().includes(q) || (l.contact||'').toLowerCase().includes(q);
+    return statusOk && needOk && searchOk;
+  });
+}
+
+// ── RENDER TABLE ───────────────────────────────────────────────────────────
+const LANG_FLAG = { ko:'🇰🇷', en:'🇺🇸', zh:'🇨🇳', ja:'🇯🇵' };
+const TAG_META = {
+  '비자만료임박':  { cls:'urgent', icon:'🛂' },
+  '갱신필요':      { cls:'urgent', icon:'🔄' },
+  '건강보험미가입':{ cls:'warn',   icon:'🏥' },
+  '은행계좌없음':  { cls:'warn',   icon:'🏦' },
+  '주거불안정':    { cls:'warn',   icon:'🏠' },
+  '서류미완료':    { cls:'warn',   icon:'📋' },
+  '정착완료':      { cls:'ok',     icon:'✅' },
+  '팔로업필요':    { cls:'neutral',icon:'📞' },
+  'VIP':           { cls:'visa',   icon:'⭐' },
+};
+
+function renderTagChips(tags) {
+  if (!tags || tags.length === 0) return '<span class="no-tags">태그 없음</span>';
+  return `<div class="tag-list">${tags.map(t => {
+    const m = TAG_META[t] || { cls:'neutral', icon:'🏷' };
+    return `<span class="crm-tag ${m.cls}" title="${t}">${m.icon} ${t}</span>`;
+  }).join('')}</div>`;
+}
+
+function renderTable() {
+  const rows = getFiltered();
+  rows.sort((a,b) => (b.id||0) - (a.id||0));
+  const tbody = document.getElementById('leads-tbody');
+  const empty = document.getElementById('empty-state');
+  document.getElementById('row-count').textContent = `${rows.length}건`;
+  if (rows.length === 0) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = rows.map(lead => {
+    const date = lead.createdAt
+      ? new Date(lead.createdAt).toLocaleDateString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
+      : '-';
+    const flag = LANG_FLAG[lead.lang] || '🌐';
+    const notesBtnLabel = lead.notes ? '✏️ 메모' : '+ 메모';
+    const fuDate = lead.followUpDate
+      ? `<div style="font-size:11px;color:#f77f00;margin-top:3px;">📅 ${lead.followUpDate}</div>` : '';
+    return `<tr>
+      <td class="td-name">${esc(lead.name||'-')}</td>
+      <td class="td-contact">${esc(lead.contact||'-')}</td>
+      <td><span class="td-visa">${esc(lead.visa||'-')}</span></td>
+      <td class="td-need" title="${esc(lead.need||'')}">${esc(lead.need||'-')}</td>
+      <td class="td-lang">${flag}</td>
+      <td class="td-date">${date}</td>
+      <td>
+        <select class="status-select status-${lead.status||'new'}"
+          onchange="updateStatus(${lead.id},this.value,this)">
+          <option value="new"        ${lead.status==='new'?'selected':''}>신규</option>
+          <option value="consulting" ${lead.status==='consulting'?'selected':''}>상담중</option>
+          <option value="done"       ${lead.status==='done'?'selected':''}>완료</option>
+        </select>
+      </td>
+      <td>
+        ${renderTagChips(lead.tags)}${fuDate}
+        <button class="ai-btn" style="margin-top:5px;" onclick="openAiModal(${lead.id})">🤖 AI 분석</button>
+      </td>
+      <td>
+        <button class="notes-btn" onclick="openModal(${lead.id})">${notesBtnLabel}</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── STATUS / NOTES ─────────────────────────────────────────────────────────
+function updateStatus(id, newStatus, selectEl) {
+  const lead = allLeads.find(l => l.id === id);
+  if (!lead) return;
+  lead.status = newStatus;
+  selectEl.className = `status-select status-${newStatus}`;
+  saveAllLeads(); updateStats();
+}
+function openModal(id) {
+  const lead = allLeads.find(l => l.id === id);
+  if (!lead) return;
+  editingLeadId = id;
+  document.getElementById('modal-lead-name').textContent = `${lead.name||'고객'} 메모`;
+  document.getElementById('modal-notes').value = lead.notes || '';
+  document.getElementById('notes-modal').classList.add('open');
+  setTimeout(() => document.getElementById('modal-notes').focus(), 50);
+}
+function closeModal() { document.getElementById('notes-modal').classList.remove('open'); editingLeadId = null; }
+function saveNotes() {
+  const lead = allLeads.find(l => l.id === editingLeadId);
+  if (!lead) return;
+  lead.notes = document.getElementById('modal-notes').value;
+  saveAllLeads(); closeModal(); renderTable();
+}
+document.getElementById('notes-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('notes-modal')) closeModal();
+});
+
+// ── AI ANALYSIS ────────────────────────────────────────────────────────────
+let aiLeadId = null;
+let aiSuggestedTags = [];
+
+async function openAiModal(id) {
+  if (!apiKey) {
+    apiKey = prompt('Anthropic API 키를 입력하세요 (sk-ant-...)');
+    if (!apiKey) return;
+    localStorage.setItem('concierge_api_key', apiKey);
+  }
+  const lead = allLeads.find(l => l.id === id);
+  if (!lead) return;
+  aiLeadId = id;
+  aiSuggestedTags = [...(lead.tags || [])];
+
+  document.getElementById('ai-loading').style.display = 'block';
+  document.getElementById('ai-result').style.display = 'none';
+  document.getElementById('ai-save-btn').disabled = true;
+  document.getElementById('ai-modal').classList.add('open');
+
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const system = `You are a CRM analyst for "정착 컨시어지". Analyze the customer data and return ONLY a JSON object:
+{
+  "summary": "2-sentence analysis in Korean",
+  "urgency": "high|medium|low",
+  "tags": ["tag1","tag2",...],
+  "followUpDate": "YYYY-MM-DD",
+  "followUpNote": "reason in Korean (1 sentence)"
+}
+Available tags (choose relevant ones): 비자만료임박, 갱신필요, 건강보험미가입, 은행계좌없음, 주거불안정, 서류미완료, 정착완료, 팔로업필요, VIP
+Today is ${today}. followUpDate must be in the future.`;
+
+    const userMsg = `Customer: ${lead.name||'?'} | Visa: ${lead.visa||'?'} | Need: ${lead.need||'?'} | Status: ${lead.status||'?'} | Created: ${(lead.createdAt||'').slice(0,10)} | Notes: ${lead.notes||'없음'} | Lang: ${lead.lang||'?'}`;
+    const raw = await callClaude(system, userMsg);
+    const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+    let data;
+    try { data = JSON.parse(cleaned); }
+    catch { const m = cleaned.match(/\{[\s\S]*\}/); data = m ? JSON.parse(m[0]) : {}; }
+
+    document.getElementById('ai-summary-text').textContent = data.summary || '-';
+
+    const ub = document.getElementById('ai-urgency-badge');
+    const urgencyMap = { high:'긴급', medium:'보통', low:'낮음' };
+    ub.textContent = urgencyMap[data.urgency] || data.urgency || '-';
+    ub.className = `urgency-badge urgency-${data.urgency||'medium'}`;
+
+    document.getElementById('ai-followup-date').textContent = data.followUpDate || '-';
+    document.getElementById('ai-followup-note').textContent = data.followUpNote || '-';
+    document.getElementById('ai-followup-date-input').value = data.followUpDate || '';
+    document.getElementById('ai-followup-note-input').value = data.followUpNote || '';
+
+    aiSuggestedTags = data.tags || [];
+    const tagWrap = document.getElementById('ai-tag-suggest');
+    const allTags = Object.keys(TAG_META);
+    tagWrap.innerHTML = allTags.map(t => {
+      const sel = aiSuggestedTags.includes(t);
+      return `<button class="ai-tag-toggle${sel?' selected':''}" onclick="toggleAiTag('${t}',this)">${TAG_META[t].icon} ${t}</button>`;
+    }).join('');
+
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('ai-result').style.display = 'block';
+    document.getElementById('ai-save-btn').disabled = false;
+  } catch(e) {
+    document.getElementById('ai-loading').innerHTML = `<div style="color:#e63946;font-size:14px;">오류: ${e.message}</div>`;
+  }
+}
+
+function toggleAiTag(tag, btn) {
+  btn.classList.toggle('selected');
+  if (btn.classList.contains('selected')) {
+    if (!aiSuggestedTags.includes(tag)) aiSuggestedTags.push(tag);
+  } else {
+    aiSuggestedTags = aiSuggestedTags.filter(t => t !== tag);
+  }
+}
+
+function closeAiModal() {
+  document.getElementById('ai-modal').classList.remove('open');
+  aiLeadId = null;
+}
+
+function saveAiResult() {
+  const lead = allLeads.find(l => l.id === aiLeadId);
+  if (!lead) return;
+  lead.tags = [...aiSuggestedTags];
+  lead.followUpDate = document.getElementById('ai-followup-date-input').value || null;
+  lead.followUpNote = document.getElementById('ai-followup-note-input').value || '';
+  saveAllLeads();
+  closeAiModal();
+  renderFollowups();
+  renderTable();
+}
+
+document.getElementById('ai-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('ai-modal')) closeAiModal();
+});
+
+// ── CLAUDE API ─────────────────────────────────────────────────────────────
+async function callClaude(system, userMsg) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 800,
+      system, messages: [{ role:'user', content: userMsg }],
+    }),
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.error?.message||`HTTP ${res.status}`); }
+  const d = await res.json();
+  return d.content?.[0]?.text || '';
+}
+
+// Initial load
+if (sessionStorage.getItem('admin_auth')) loadLeads();
+</script>
+</body>
+</html>
